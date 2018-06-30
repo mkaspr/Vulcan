@@ -1,0 +1,85 @@
+#pragma once
+
+#include <vulcan/device.h>
+
+namespace vulcan
+{
+
+template <typename T>
+class Buffer
+{
+  public:
+
+    Buffer() :
+      data_(nullptr),
+      capacity_(0),
+      size_(0)
+    {
+    }
+
+    Buffer(size_t size) :
+      data_(nullptr),
+      capacity_(0),
+      size_(0)
+    {
+      Resize(size);
+    }
+
+    ~Buffer()
+    {
+      cudaFree(data_);
+    }
+
+    inline size_t GetSize() const
+    {
+      return size_;
+    }
+
+    inline size_t GetCapacity() const
+    {
+      return capacity_;
+    }
+
+    inline void Resize(size_t size)
+    {
+      if (size > capacity_) Reserve(size);
+      size_ = size;
+    }
+
+    void Reserve(size_t capacity)
+    {
+      if (capacity > capacity_)
+      {
+        CUDA_DEBUG(cudaFree(data_));
+        const size_t bytes = sizeof(T) * capacity;
+        CUDA_DEBUG(cudaMalloc(&data_, bytes));
+        capacity_ = capacity;
+      }
+    }
+
+    inline const T* GetData() const
+    {
+      return data_;
+    }
+
+    inline T* GetData()
+    {
+      return data_;
+    }
+
+  private:
+
+    Buffer(const Buffer& buffer);
+
+    Buffer& operator=(const Buffer& buffer);
+
+  protected:
+
+    T* data_;
+
+    size_t capacity_;
+
+    size_t size_;
+};
+
+} // namespace vulcan
