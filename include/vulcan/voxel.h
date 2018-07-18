@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <vulcan/device.h>
 
 namespace vulcan
 {
@@ -9,10 +9,18 @@ class Voxel
 {
   public:
 
-    Voxel() :
-      distance(0),
-      weight(0)
+    VULCAN_HOST_DEVICE
+    Voxel()
     {
+    }
+
+    VULCAN_HOST_DEVICE
+    static inline Voxel Empty()
+    {
+      Voxel result;
+      result.distance = -1;
+      result.weight = 0;
+      return result;
     }
 
   public:

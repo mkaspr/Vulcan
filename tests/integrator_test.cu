@@ -95,9 +95,9 @@ TEST(Integrator, Integrate)
   frame.projection.SetCenterPoint(80, 60);
   frame.depth_image = image;
 
-  const float trunc_length = 0.20;
-  const float voxel_length = 0.01;
-  const float block_length = Block::resolution * voxel_length;
+  const float trunc_length = 0.02;
+  const float voxel_length = 0.008;
+  const float block_length = (Block::resolution - 1) * voxel_length;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>();
@@ -122,7 +122,7 @@ TEST(Integrator, Integrate)
   volume->GetVoxels(found);
 
   thrust::host_vector<Voxel> expected(found.size());
-  thrust::fill(expected.begin(), expected.end(), Voxel());
+  thrust::fill(expected.begin(), expected.end(), Voxel::Empty());
 
   std::vector<bool> border_points(expected.size());
   std::fill(border_points.begin(), border_points.end(), false);

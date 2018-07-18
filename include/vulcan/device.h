@@ -8,6 +8,7 @@
 #define VULCAN_HOST        __host__
 #define VULCAN_DEVICE      __device__
 #define VULCAN_HOST_DEVICE __host__ __device__
+#define VULCAN_CONSTANT    const __constant__
 
 #define CUDA_ASSERT(cmd) {                                                     \
   const cudaError_t code = cmd;                                                \

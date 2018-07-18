@@ -64,6 +64,40 @@ class Transform
     }
 
     VULCAN_HOST_DEVICE
+    static inline Transform Rotate(const Vector4f& R)
+    {
+      return Rotate(R[0], R[1], R[2], R[3]);
+    }
+
+    VULCAN_HOST_DEVICE
+    static inline Transform Rotate(float w, float x, float y, float z)
+    {
+      Matrix4f matrix;
+
+      matrix(0, 0) = 1 - 2 * (y * y + z * z);
+      matrix(0, 1) = 2 * (x * y - w * z);
+      matrix(0, 2) = 2 * (x * z + w * y);
+      matrix(0, 3) = 0.0f;
+
+      matrix(1, 0) = 2 * (x * y + w * z);
+      matrix(1, 1) = 1 - 2 * (x * x + z * z);
+      matrix(1, 2) = 2 * (y * z - w * x);
+      matrix(1, 3) = 0.0f;
+
+      matrix(2, 0) = 2 * (x * z - w * y);
+      matrix(2, 1) = 2 * (y * z + w * x);
+      matrix(2, 2) = 1 - 2 * (x * x + y * y);
+      matrix(2, 3) = 0.0f;
+
+      matrix(3, 0) = 0.0f;
+      matrix(3, 1) = 0.0f;
+      matrix(3, 2) = 0.0f;
+      matrix(3, 3) = 1.0f;
+
+      return Transform(matrix, matrix.Transpose());
+    }
+
+    VULCAN_HOST_DEVICE
     static inline Transform Translate(const Vector3f& t)
     {
       return Translate(t[0], t[1], t[2]);

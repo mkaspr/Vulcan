@@ -109,6 +109,9 @@ void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
     // get depth value from depth image at pixel index
     const float d = depth[y * image_width + x];
 
+    // ignore invalid depth values
+    if (d <= 0.05f || d >= 5.0f) return; // TODO: expose parameters
+
     // compute inferred 3D point in world frame frame depth
     // NOTE: assume depth values are distance from image plane along Z-axis
     // and that the direction from unproject is scaled such that dir.z = 1
@@ -363,8 +366,8 @@ Volume::Volume(int main_block_count, int excess_block_count) :
   max_block_count_(main_block_count + excess_block_count),
   main_block_count_(main_block_count),
   excess_block_count_(excess_block_count),
-  truncation_length_(0.1),
-  voxel_length_(0.02),
+  truncation_length_(0.02),
+  voxel_length_(0.008),
   empty_(true)
 {
   Initialize();
@@ -444,7 +447,7 @@ void Volume::UpdateBlockVisibility(const Frame& frame)
   const Transform& transform = frame.transform;
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
-  const float block_length = voxel_length_ * Block::resolution;
+  const float block_length = (Block::resolution - 1) * voxel_length_;
 
   const size_t threads = 512;
   const size_t total = max_block_count_;
@@ -470,7 +473,7 @@ void Volume::CreateAllocationRequests(const Frame& frame)
   const int height = frame.depth_image->GetHeight();
   const Projection& projection = frame.projection;
   const Transform transform = frame.transform.Inverse();
-  const float block_length = voxel_length_ * Block::resolution;
+  const float block_length = (Block::resolution - 1) * voxel_length_;
 
   const dim3 threads(16, 16);
   const dim3 total(width, height);
@@ -531,7 +534,7 @@ void Volume::CreateVoxelBuffer()
 {
   voxels_.Resize(max_block_count_ * Block::voxel_count);
   thrust::device_ptr<Voxel> data(voxels_.GetData());
-  thrust::fill(data, data + voxels_.GetSize(), Voxel());
+  thrust::fill(data, data + voxels_.GetSize(), Voxel::Empty());
   CUDA_DEBUG_LAST();
 }
 

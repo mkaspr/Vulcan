@@ -40,6 +40,11 @@ class Buffer
       return capacity_;
     }
 
+    inline size_t IsEmpty() const
+    {
+      return size_ == 0;
+    }
+
     inline void Resize(size_t size)
     {
       if (size > capacity_) Reserve(size);
@@ -55,6 +60,20 @@ class Buffer
         CUDA_DEBUG(cudaMalloc(&data_, bytes));
         capacity_ = capacity;
       }
+    }
+
+    void CopyToDevice(T* buffer)
+    {
+      const size_t bytes = sizeof(T) * size_;
+      const cudaMemcpyKind kind = cudaMemcpyDeviceToDevice;
+      CUDA_DEBUG(cudaMemcpy(buffer, data_, bytes, kind));
+    }
+
+    void CopyToHost(T* buffer)
+    {
+      const size_t bytes = sizeof(T) * size_;
+      const cudaMemcpyKind kind = cudaMemcpyDeviceToHost;
+      CUDA_DEBUG(cudaMemcpy(buffer, data_, bytes, kind));
     }
 
     inline const T* GetData() const

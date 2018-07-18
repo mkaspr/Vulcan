@@ -29,7 +29,8 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
   const Block& block = entry.block;
 
   // compute voxel point in world frame
-  const Vector3f block_offset = block_length * Vector3f(block.GetOrigin());
+  // TODO: FIX -0.5f HACK!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  const Vector3f block_offset = block_length * (-0.5f + Vector3f(block.GetOrigin()));
   const Vector3f voxel_offset = voxel_length * Vector3f(x, y, z);
   const Vector3f Xwp = block_offset + voxel_offset;
 
@@ -44,6 +45,9 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
   {
     // get measurement from depth image
     const float d = depth[int(uv[1]) * image_width + int(uv[0])];
+
+    // ignore invalid depth values
+    if (d <= 0.05f || d >= 5.0f) return; // TODO: expose parameters
 
     // compute signed distance
     const float distance = d - Xcp[2];
@@ -100,7 +104,7 @@ void Integrator::Integrate(const Frame& frame)
   const int* indices = index_buffer.GetData();
   const HashEntry* entries = entry_buffer.GetData();
   const float voxel_length = volume_->GetVoxelLength();
-  const float block_length = Block::resolution * voxel_length;
+  const float block_length = (Block::resolution - 1) * voxel_length;
   const float truncation_length = volume_->GetTruncationLength();
   const float* depth = frame.depth_image->GetData();
   const int image_width = frame.depth_image->GetWidth();

@@ -159,6 +159,22 @@ class Matrix
     }
 
     VULCAN_HOST_DEVICE
+    inline Matrix<T, N, M> Transpose()
+    {
+      Matrix<T, N, M> result;
+
+      for (int n = 0; n < N; ++n)
+      {
+        for (int m = 0; m < M; ++m)
+        {
+          result(n, m) = (*this)(m, n);
+        }
+      }
+
+      return result;
+    }
+
+    VULCAN_HOST_DEVICE
     const Matrix operator+(const Matrix& matrix) const
     {
       Matrix result(*this);
@@ -387,12 +403,15 @@ std::ostream& operator<<(std::ostream& out, const Matrix<T, M, N>& matrix)
 template <typename T, int M>
 using Vector = Matrix<T, M, 1>;
 
-typedef Vector<int32_t, 2> Vector2i;
-typedef Vector<int32_t, 3> Vector3i;
-typedef Vector<int32_t, 4> Vector4i;
-typedef Vector<int16_t, 2> Vector2s;
-typedef Vector<int16_t, 3> Vector3s;
-typedef Vector<int16_t, 4> Vector4s;
+typedef Vector<char, 2> Vector2c;
+typedef Vector<char, 3> Vector3c;
+typedef Vector<char, 4> Vector4c;
+typedef Vector<int, 2> Vector2i;
+typedef Vector<int, 3> Vector3i;
+typedef Vector<int, 4> Vector4i;
+typedef Vector<short, 2> Vector2s;
+typedef Vector<short, 3> Vector3s;
+typedef Vector<short, 4> Vector4s;
 typedef Vector<float, 2> Vector2f;
 typedef Vector<float, 3> Vector3f;
 typedef Vector<float, 4> Vector4f;

@@ -34,8 +34,8 @@ class Volume : public vulcan::Volume, public ::testing::Test
 
 TEST_F(Volume, Constructor)
 {
-  ASSERT_FLOAT_EQ(0.02, GetVoxelLength());
-  ASSERT_FLOAT_EQ(0.10, GetTruncationLength());
+  ASSERT_FLOAT_EQ(0.008, GetVoxelLength());
+  ASSERT_FLOAT_EQ(0.02, GetTruncationLength());
   ASSERT_EQ(MAX_BLOCK_COUNT, max_block_count_);
   ASSERT_EQ(MAX_BLOCK_COUNT * Block::voxel_count, voxels_.GetCapacity());
   ASSERT_EQ(MAX_BLOCK_COUNT * Block::voxel_count, voxels_.GetSize());
@@ -255,7 +255,7 @@ TEST_F(Volume, CreateAllocationRequests)
 
   const float trunc_length = 0.20;
   const float voxel_length = 0.02;
-  const float block_length = Block::resolution * voxel_length;
+  const float block_length = (Block::resolution - 1) * voxel_length;
   const float inv_block_length = 1 / block_length;
   SetTruncationLength(trunc_length);
   SetVoxelLength(voxel_length);
