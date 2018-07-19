@@ -44,6 +44,7 @@ set(CPP_HEADER_DIR include/vulcan)
 set(CPP_HEADERS
   ${CPP_HEADER_DIR}/block.h
   ${CPP_HEADER_DIR}/buffer.h
+  ${CPP_HEADER_DIR}/detector.h
   ${CPP_HEADER_DIR}/device.h
   ${CPP_HEADER_DIR}/exception.h
   ${CPP_HEADER_DIR}/exporter.h
@@ -89,6 +90,7 @@ set(CUDA_HEADERS
 set(CUDA_SOURCE_DIR src)
 
 set(CUDA_SOURCES
+  ${CUDA_SOURCE_DIR}/detector.cu
   ${CUDA_SOURCE_DIR}/extractor.cu
   ${CUDA_SOURCE_DIR}/integrator.cu
   ${CUDA_SOURCE_DIR}/volume.cu
@@ -110,6 +112,7 @@ endforeach()
 include_directories(${REQUIRED_INCLUDE_DIRS})
 cuda_add_library(vulcan SHARED ${CPP_SOURCES} ${CUDA_SOURCES})
 target_link_libraries(vulcan ${REQUIRED_LIBRARIES})
+cuda_add_cublas_to_target(vulcan)
 
 # build applications
 
@@ -126,3 +129,18 @@ option(VULCAN_BUILD_TESTS "Build unit tests" OFF)
 if(VULCAN_BUILD_TESTS)
   add_subdirectory(tests)
 endif()
+
+# export library
+
+include(install_package)
+
+install_package(
+  PKG_NAME VULCAN
+  LIB_NAME vulcan
+  VERSION  1.0
+  DESCRIPTION "Implementation of the SGM stereo matching algorithm"
+  INSTALL_INCLUDE_DIR true
+  DESTINATION ${CMAKE_INSTALL_PREFIX}
+  INCLUDE_DIRS ${REQUIRED_INCLUDE_DIRS}
+  LINK_LIBS ${REQUIRED_LIBRARIES}
+)

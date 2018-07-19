@@ -254,6 +254,24 @@ class Matrix
       return *this;
     }
 
+    template <typename S>
+    VULCAN_HOST_DEVICE
+    const Matrix operator/(S scalar) const
+    {
+      Matrix result(*this);
+      result /= scalar;
+      return result;
+    }
+
+    template <typename S>
+    VULCAN_HOST_DEVICE
+    Matrix& operator/=(S scalar)
+    {
+      VULCAN_DEBUG(scalar != S(0));
+      const float inv = 1.0f / scalar;
+      return (*this) *= inv;
+    }
+
     template <int P>
     VULCAN_HOST_DEVICE
     const Matrix<T, M, P> operator*(const Matrix<T, N, P>& matrix) const
