@@ -7,8 +7,8 @@
 #include <thrust/fill.h>
 #include <vulcan/vulcan.h>
 
-DEFINE_int32(main_blocks, 260096, "main block count");
-DEFINE_int32(excess_blocks, 2048, "excess block count");
+DEFINE_int32(main_blocks, 130048, "main block count");
+DEFINE_int32(excess_blocks, 8192, "excess block count");
 DEFINE_double(voxel_length, 0.008, "voxel edge length");
 DEFINE_double(truncation_length, 0.04, "volume truncation length");
 DEFINE_string(output, "output.ply", "output mesh file");
@@ -25,8 +25,12 @@ int main(int argc, char** argv)
   LOG(INFO) << "Reading frames...";
 
   std::vector<Frame> frames(16);
+
   std::shared_ptr<Image> image;
   image = std::make_shared<Image>();
+
+  std::shared_ptr<ColorImage> color_image;
+  color_image = std::make_shared<ColorImage>();
 
   for (size_t i = 0; i < frames.size(); ++i)
   {
@@ -35,10 +39,12 @@ int main(int argc, char** argv)
     buffer << std::setw(4) << std::setfill('0') << i << ".png";
     const std::string file = buffer.str();
     image->Load(file, 1.0 / 1000.0);
+    color_image->Load(file);
 
     frames[i].transform = Transform::Translate(0, 0, 0);
     frames[i].projection.SetFocalLength(1.0f * Vector2f(258.2812, 293.2650));
     frames[i].projection.SetCenterPoint(1.0f * Vector2f(325.8055, 268.8094));
+    frames[i].color_image = color_image;
     frames[i].depth_image = image;
   }
 

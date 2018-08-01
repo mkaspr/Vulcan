@@ -83,17 +83,25 @@ TEST(Integrator, Integrate)
 {
   const int w = 160;
   const int h = 120;
-  std::shared_ptr<Image> image;
-  image = std::make_shared<Image>(w, h);
-  thrust::device_ptr<float> ptr(image->GetData());
-  const int count = image->GetTotal();
+
+  std::shared_ptr<Image> depth_image;
+  depth_image = std::make_shared<Image>(w, h);
+  thrust::device_ptr<float> ptr(depth_image->GetData());
+  const int count = depth_image->GetTotal();
   thrust::fill(ptr, ptr + count, 1.5f);
+
+  std::shared_ptr<ColorImage> color_image;
+  color_image = std::make_shared<ColorImage>(w, h);
+  thrust::device_ptr<Vector3f> cptr(color_image->GetData());
+  const int color_count = color_image->GetTotal();
+  thrust::fill(cptr, cptr + color_count, Vector3f(1, 2, 3));
 
   Frame frame;
   frame.transform = Transform::Translate(0, 0, 0);
   frame.projection.SetFocalLength(80, 80);
   frame.projection.SetCenterPoint(80, 60);
-  frame.depth_image = image;
+  frame.depth_image = depth_image;
+  frame.color_image = color_image;
 
   const float trunc_length = 0.02;
   const float voxel_length = 0.008;
@@ -109,8 +117,11 @@ TEST(Integrator, Integrate)
   integrator.SetMaxWeight(16);
   integrator.Integrate(frame);
 
-  thrust::device_ptr<float> depth_ptr(image->GetData());
-  thrust::host_vector<float> depth(depth_ptr, depth_ptr + image->GetTotal());
+  thrust::device_ptr<float> depth_ptr(depth_image->GetData());
+  thrust::host_vector<float> depths(depth_ptr, depth_ptr + depth_image->GetTotal());
+
+  thrust::device_ptr<Vector3f> color_ptr(color_image->GetData());
+  thrust::host_vector<Vector3f> colors(color_ptr, color_ptr + color_image->GetTotal());
 
   thrust::host_vector<int> visible_blocks;
   volume->GetVisibleBlocks(visible_blocks);
@@ -132,9 +143,7 @@ TEST(Integrator, Integrate)
     const int index = visible_blocks[i];
     const HashEntry& entry = hash_entries[index];
     const Vector3s block_index = entry.block.GetOrigin();
-    // const Vector3f block_offset = block_length * Vector3f(block_index);
-    // TODO: FIX -0.5f HACK!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    const Vector3f block_offset = block_length * (-0.5f + Vector3f(block_index));
+    const Vector3f block_offset = block_length * Vector3f(block_index);
 
     for (int z = 0; z < Block::resolution; ++z)
     {
@@ -143,7 +152,7 @@ TEST(Integrator, Integrate)
         for (int x = 0; x < Block::resolution; ++x)
         {
           const Vector3f voxel_index = Vector3f(x, y, z);
-          const Vector3f voxel_offset = voxel_length * voxel_index;
+          const Vector3f voxel_offset = voxel_length * (voxel_index + 0.5f);
           const Vector3f Xwp = block_offset + voxel_offset;
           const Vector3f Xcp = Vector3f(frame.transform * Vector4f(Xwp, 1));
           const Vector2f uv = frame.projection.Project(Xcp);
@@ -161,8 +170,9 @@ TEST(Integrator, Integrate)
           if (uv[0] >= 0 && uv[0] < w && uv[1] >= 0 && uv[1] < h)
           {
             const Vector2i pixel(uv);
-            const float d = depth[pixel[1] * w + pixel[0]];
-            const float distance = d - Xcp[2];
+            const int image_index = pixel[1] * w + pixel[0];
+            const float depth = depths[image_index];
+            const float distance = depth - Xcp[2];
 
             if (distance > -trunc_length)
             {
@@ -172,10 +182,14 @@ TEST(Integrator, Integrate)
               const int voxel_index = block_index + (z * r2 + y * r + x);
               Voxel& voxel = expected[voxel_index];
 
+              const Vector3f curr_color = colors[image_index];
               const float prev_distance = voxel.weight * voxel.distance;
               const float curr_distance = min(1.0f, distance / trunc_length);
-              const float new_weight = voxel.weight + 1;
+              const Vector3f prev_color = voxel.weight * voxel.color;
+              float new_weight = voxel.weight + 1;
               voxel.distance = (prev_distance + curr_distance) / new_weight;
+              voxel.color = (prev_color + curr_color) / new_weight;
+              new_weight = min(integrator.GetMaxWeight(), new_weight);
               voxel.weight = new_weight;
             }
           }
@@ -188,8 +202,8 @@ TEST(Integrator, Integrate)
   {
     if (!border_points[i] || (expected[i].weight > 0 && found[i].weight > 0))
     {
-      ASSERT_NEAR(expected[i].distance, found[i].distance, 1E-6);
-      ASSERT_NEAR(expected[i].weight, found[i].weight, 1E-6);
+      ASSERT_NEAR(expected[i].distance, found[i].distance, 1E-5);
+      ASSERT_NEAR(expected[i].weight, found[i].weight, 1E-5);
     }
   }
 
@@ -200,8 +214,8 @@ TEST(Integrator, Integrate)
   {
     if (!border_points[i] || (expected[i].weight > 0 && found[i].weight > 0))
     {
-      ASSERT_NEAR(expected[i].distance, found[i].distance, 1E-6);
-      ASSERT_NEAR(2 * expected[i].weight, found[i].weight, 1E-6);
+      ASSERT_NEAR(expected[i].distance, found[i].distance, 1E-5);
+      ASSERT_NEAR(2 * expected[i].weight, found[i].weight, 1E-5);
     }
   }
 }

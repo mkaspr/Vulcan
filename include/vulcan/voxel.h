@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulcan/device.h>
+#include <vulcan/matrix.h>
 
 namespace vulcan
 {
@@ -18,16 +19,19 @@ class Voxel
     static inline Voxel Empty()
     {
       Voxel result;
-      result.distance = -1;
       result.weight = 0;
+      result.distance = -1;
+      result.color = Vector3f::Zeros();
       return result;
     }
 
   public:
 
+    float weight;
+
     float distance;
 
-    float weight;
+    Vector3f color;
 };
 
 } // namespace vulcan

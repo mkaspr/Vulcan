@@ -15,8 +15,9 @@ namespace vulcan
 VULCAN_GLOBAL
 void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     float voxel_length, float block_length, float truncation_length,
-    const float* depth, int image_width, int image_height, float max_weight,
-    const Projection projection, const Transform transform, Voxel* voxels)
+    const float* depths, const Vector3f* colors, int image_width,
+    int image_height, float max_weight, const Projection projection,
+    const Transform transform, Voxel* voxels)
 {
   // TODO: voxel centers should be used (not corners)
   // using corners (and their consequent overlap) is needed for marching cubes
@@ -34,9 +35,9 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
   const Block& block = entry.block;
 
   // compute voxel point in world frame
-  // TODO: FIX -0.5f HACK!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  const Vector3f block_offset = block_length * (-0.5f + Vector3f(block.GetOrigin()));
-  const Vector3f voxel_offset = voxel_length * Vector3f(x, y, z);
+  const Vector3s& block_index = block.GetOrigin();
+  const Vector3f block_offset = block_length * Vector3f(block_index);
+  const Vector3f voxel_offset = voxel_length * (Vector3f(x, y, z) + 0.5f);
   const Vector3f Xwp = block_offset + voxel_offset;
 
   // convert point to camera frame
@@ -49,13 +50,14 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
   if (uv[0] >= 0 && uv[0] < image_width && uv[1] >= 0 && uv[1] < image_height)
   {
     // get measurement from depth image
-    const float d = depth[int(uv[1]) * image_width + int(uv[0])];
+    const int image_index = int(uv[1]) * image_width + int(uv[0]);
+    const float depth = depths[image_index];
 
     // ignore invalid depth values
-    if (d <= 0.05f || d >= 5.0f) return; // TODO: expose parameters
+    if (depth <= 0.05f || depth >= 5.0f) return; // TODO: expose parameters
 
     // compute signed distance
-    const float distance = d - Xcp[2];
+    const float distance = depth - Xcp[2];
 
     // check if within truncated segment
     if (distance > -truncation_length)
@@ -68,11 +70,14 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
 
       // update voxel data
       Voxel voxel = voxels[voxel_index];
+      const Vector3f curr_color = colors[image_index];
       const float prev_dist = voxel.weight * voxel.distance;
       const float curr_dist = min(1.0f, distance / truncation_length);
+      const Vector3f prev_color = voxel.weight * voxel.color;
       const float new_weight = voxel.weight + 1;
-      voxel.distance = (prev_dist + curr_dist) / new_weight;
       voxel.weight = min(max_weight, new_weight);
+      voxel.distance = (prev_dist + curr_dist) / new_weight;
+      voxel.color = (prev_color + curr_color) / new_weight;
       voxels[voxel_index] = voxel;
     }
   }
@@ -111,7 +116,8 @@ void Integrator::Integrate(const Frame& frame)
   const float voxel_length = volume_->GetVoxelLength();
   const float block_length = (Block::resolution - 1) * voxel_length;
   const float truncation_length = volume_->GetTruncationLength();
-  const float* depth = frame.depth_image->GetData();
+  const float* depths = frame.depth_image->GetData();
+  const Vector3f* colors = frame.color_image->GetData();
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
   const Projection& projection = frame.projection;
@@ -123,8 +129,8 @@ void Integrator::Integrate(const Frame& frame)
   const dim3 threads(resolution, resolution, resolution);
 
   CUDA_LAUNCH(IntegrateKernel, blocks, threads, 0, 0, indices, entries,
-      voxel_length, block_length, truncation_length, depth, image_width,
-      image_height, max_weight_, projection, transform, voxels);
+      voxel_length, block_length, truncation_length, depths, colors,
+      image_width, image_height, max_weight_, projection, transform, voxels);
 }
 
 } // namespace vulcan
