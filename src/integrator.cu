@@ -18,6 +18,11 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     const float* depth, int image_width, int image_height, float max_weight,
     const Projection projection, const Transform transform, Voxel* voxels)
 {
+  // TODO: voxel centers should be used (not corners)
+  // using corners (and their consequent overlap) is needed for marching cubes
+  // but marching cubes is not the focus of this pipeline
+  // consequently, we should use voxele centers
+
   // get voxel indices
   const int x = threadIdx.x;
   const int y = threadIdx.y;

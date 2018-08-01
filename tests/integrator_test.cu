@@ -132,7 +132,9 @@ TEST(Integrator, Integrate)
     const int index = visible_blocks[i];
     const HashEntry& entry = hash_entries[index];
     const Vector3s block_index = entry.block.GetOrigin();
-    const Vector3f block_offset = block_length * Vector3f(block_index);
+    // const Vector3f block_offset = block_length * Vector3f(block_index);
+    // TODO: FIX -0.5f HACK!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    const Vector3f block_offset = block_length * (-0.5f + Vector3f(block_index));
 
     for (int z = 0; z < Block::resolution; ++z)
     {

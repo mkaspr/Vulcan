@@ -708,11 +708,13 @@ void Extractor::ResizeMesh(DeviceMesh& mesh) const
   const int max_corner_count = Block::voxel_count;
   const int max_point_count = edges_per_corner * max_corner_count;
   mesh.points.Reserve(block_count * max_point_count);
+  mesh.points.Resize(0);
 
   const int max_faces_per_cube = 5;
   const int max_cube_count = std::pow(Block::resolution - 1, 3);
   const int max_face_count = max_faces_per_cube * max_cube_count;
   mesh.faces.Reserve(block_count * max_face_count);
+  mesh.faces.Resize(0);
 }
 
 void Extractor::ResizeMesh(Mesh& mesh) const
@@ -725,11 +727,13 @@ void Extractor::ResizeMesh(Mesh& mesh) const
   const int max_corner_count = Block::voxel_count;
   const int max_point_count = edges_per_corner * max_corner_count;
   mesh.points.reserve(block_count * max_point_count);
+  mesh.points.resize(0);
 
   const int max_faces_per_cube = 5;
   const int max_cube_count = std::pow(Block::resolution - 1, 3);
   const int max_face_count = max_faces_per_cube * max_cube_count;
   mesh.faces.reserve(block_count * max_face_count);
+  mesh.faces.resize(0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

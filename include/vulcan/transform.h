@@ -58,9 +58,35 @@ class Transform
     }
 
     VULCAN_HOST_DEVICE
+    inline Transform operator*(const Transform& t) const
+    {
+      return Transform(matrix_ * t.matrix_, inv_matrix_ * t.inv_matrix_);
+    }
+
+    VULCAN_HOST_DEVICE
     inline Transform Inverse() const
     {
       return Transform(inv_matrix_, matrix_);
+    }
+
+    VULCAN_HOST_DEVICE
+    static inline Transform Rotate(const Matrix3f& R)
+    {
+      Matrix4f matrix = Matrix4f::Identity();
+
+      matrix(0, 0) = R(0, 0);
+      matrix(1, 0) = R(1, 0);
+      matrix(2, 0) = R(2, 0);
+
+      matrix(0, 1) = R(0, 1);
+      matrix(1, 1) = R(1, 1);
+      matrix(2, 1) = R(2, 1);
+
+      matrix(0, 2) = R(0, 2);
+      matrix(1, 2) = R(1, 2);
+      matrix(2, 2) = R(2, 2);
+
+      return Transform(matrix, matrix.Transpose());
     }
 
     VULCAN_HOST_DEVICE

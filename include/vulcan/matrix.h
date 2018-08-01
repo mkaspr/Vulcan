@@ -389,9 +389,16 @@ inline Matrix<T, M, N> operator+(S scalar, const Matrix<T, M, N>& matrix)
   return matrix + scalar;
 }
 
-template <typename S, typename T, int M, int N>
+// template <typename S, typename T, int M, int N>
+// VULCAN_HOST_DEVICE
+// inline Matrix<T, M, N> operator*(S scalar, const Matrix<T, M, N>& matrix)
+// {
+//   return matrix * scalar;
+// }
+
+template <typename T, int M, int N>
 VULCAN_HOST_DEVICE
-inline Matrix<T, M, N> operator*(S scalar, const Matrix<T, M, N>& matrix)
+inline Matrix<T, M, N> operator*(float scalar, const Matrix<T, M, N>& matrix)
 {
   return matrix * scalar;
 }
