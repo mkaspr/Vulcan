@@ -26,7 +26,6 @@ set(CPP_SOURCES
   matrix_test.cpp
   mesh_test.cpp
   projection_test.cpp
-  tracer_test.cpp
   tracker_test.cpp
   transform_test.cpp
   types_test.cpp
@@ -38,6 +37,7 @@ set(CPP_SOURCES
 set(CUDA_SOURCES
   util_test.cu
   integrator_test.cu
+  tracer_test.cu
 )
 
 # build executable

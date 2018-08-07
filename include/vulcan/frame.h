@@ -10,7 +10,7 @@ namespace vulcan
 
 struct Frame
 {
-  Transform transform;
+  Transform Tcw;
 
   Projection projection;
 

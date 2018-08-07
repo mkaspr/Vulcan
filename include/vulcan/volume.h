@@ -18,6 +18,10 @@ class Volume
 
     Volume(int main_block_count, int excess_block_count);
 
+    int GetMainBlockCount() const;
+
+    int GetExcessBlockCount() const;
+
     float GetVoxelLength() const;
 
     void SetVoxelLength(float length);

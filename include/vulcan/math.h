@@ -15,6 +15,20 @@ inline T min(T a, T b)
 
 template <typename T>
 VULCAN_HOST_DEVICE
+inline T max(T a, T b)
+{
+  return (b > a) ? b : a;
+}
+
+template <typename T>
+VULCAN_HOST_DEVICE
+inline T clamp(T v, T vmin, T vmax)
+{
+  return min(vmax, max(vmin, v));
+}
+
+template <typename T>
+VULCAN_HOST_DEVICE
 inline T sqrt(T value)
 {
   return ::std::sqrt(value);

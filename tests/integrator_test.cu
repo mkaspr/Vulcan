@@ -97,7 +97,7 @@ TEST(Integrator, Integrate)
   thrust::fill(cptr, cptr + color_count, Vector3f(1, 2, 3));
 
   Frame frame;
-  frame.transform = Transform::Translate(0, 0, 0);
+  frame.Tcw = Transform::Translate(0, 0, 0);
   frame.projection.SetFocalLength(80, 80);
   frame.projection.SetCenterPoint(80, 60);
   frame.depth_image = depth_image;
@@ -105,7 +105,7 @@ TEST(Integrator, Integrate)
 
   const float trunc_length = 0.02;
   const float voxel_length = 0.008;
-  const float block_length = (Block::resolution - 1) * voxel_length;
+  const float block_length = Block::resolution * voxel_length;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>();
@@ -154,7 +154,7 @@ TEST(Integrator, Integrate)
           const Vector3f voxel_index = Vector3f(x, y, z);
           const Vector3f voxel_offset = voxel_length * (voxel_index + 0.5f);
           const Vector3f Xwp = block_offset + voxel_offset;
-          const Vector3f Xcp = Vector3f(frame.transform * Vector4f(Xwp, 1));
+          const Vector3f Xcp = Vector3f(frame.Tcw * Vector4f(Xwp, 1));
           const Vector2f uv = frame.projection.Project(Xcp);
 
           if (std::abs(uv[0]) < 1E-6f || std::abs(uv[0] - w) < 1E-6 ||

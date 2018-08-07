@@ -61,6 +61,7 @@ set(CPP_HEADERS
   ${CPP_HEADER_DIR}/tracker.h
   ${CPP_HEADER_DIR}/transform.h
   ${CPP_HEADER_DIR}/types.h
+  ${CPP_HEADER_DIR}/util.h
   ${CPP_HEADER_DIR}/volume.h
   ${CPP_HEADER_DIR}/voxel.h
 )
@@ -82,6 +83,7 @@ set(CPP_SOURCES
 set(CUDA_HEADER_DIR include/vulcan)
 
 set(CUDA_HEADERS
+  ${CUDA_HEADER_DIR}/tracer.cuh
   ${CUDA_HEADER_DIR}/util.cuh
 )
 
@@ -93,6 +95,7 @@ set(CUDA_SOURCES
   ${CUDA_SOURCE_DIR}/detector.cu
   ${CUDA_SOURCE_DIR}/extractor.cu
   ${CUDA_SOURCE_DIR}/integrator.cu
+  ${CUDA_SOURCE_DIR}/tracer.cu
   ${CUDA_SOURCE_DIR}/volume.cu
 )
 

@@ -41,7 +41,7 @@ int main(int argc, char** argv)
     image->Load(file, 1.0 / 1000.0);
     color_image->Load(file);
 
-    frames[i].transform = Transform::Translate(0, 0, 0);
+    frames[i].Tcw = Transform::Translate(0, 0, 0);
     frames[i].projection.SetFocalLength(1.0f * Vector2f(258.2812, 293.2650));
     frames[i].projection.SetCenterPoint(1.0f * Vector2f(325.8055, 268.8094));
     frames[i].color_image = color_image;

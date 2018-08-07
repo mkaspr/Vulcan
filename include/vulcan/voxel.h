@@ -20,7 +20,7 @@ class Voxel
     {
       Voxel result;
       result.weight = 0;
-      result.distance = -1;
+      result.distance = 1;
       result.color = Vector3f::Zeros();
       return result;
     }

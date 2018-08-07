@@ -52,6 +52,20 @@ class Block
       return !(origin_ == block.origin_);
     }
 
+    VULCAN_HOST_DEVICE
+    inline const short& operator[](int index) const
+    {
+      VULCAN_DEBUG(index < 3);
+      return origin_[index];
+    }
+
+    VULCAN_HOST_DEVICE
+    inline short& operator[](int index)
+    {
+      VULCAN_DEBUG(index < 3);
+      return origin_[index];
+    }
+
     // index -> global voxel position
 
     // x y z -> index

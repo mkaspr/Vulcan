@@ -17,13 +17,8 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     float voxel_length, float block_length, float truncation_length,
     const float* depths, const Vector3f* colors, int image_width,
     int image_height, float max_weight, const Projection projection,
-    const Transform transform, Voxel* voxels)
+    const Transform Tcw, Voxel* voxels)
 {
-  // TODO: voxel centers should be used (not corners)
-  // using corners (and their consequent overlap) is needed for marching cubes
-  // but marching cubes is not the focus of this pipeline
-  // consequently, we should use voxele centers
-
   // get voxel indices
   const int x = threadIdx.x;
   const int y = threadIdx.y;
@@ -41,7 +36,7 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
   const Vector3f Xwp = block_offset + voxel_offset;
 
   // convert point to camera frame
-  const Vector3f Xcp = Vector3f(transform * Vector4f(Xwp, 1));
+  const Vector3f Xcp = Vector3f(Tcw * Vector4f(Xwp, 1));
 
   // project point to image plane
   const Vector2f uv = projection.Project(Xcp);
@@ -79,6 +74,11 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
       voxel.distance = (prev_dist + curr_dist) / new_weight;
       voxel.color = (prev_color + curr_color) / new_weight;
       voxels[voxel_index] = voxel;
+
+      // if (block[0] == -13 && block[1] == -10 && block[2] == 23)
+      // {
+      //   printf("  integrating: %d %d %d = %f\n", block[0], block[1], block[2], distance);
+      // }
     }
   }
 }
@@ -114,14 +114,14 @@ void Integrator::Integrate(const Frame& frame)
   const int* indices = index_buffer.GetData();
   const HashEntry* entries = entry_buffer.GetData();
   const float voxel_length = volume_->GetVoxelLength();
-  const float block_length = (Block::resolution - 1) * voxel_length;
+  const float block_length = Block::resolution * voxel_length;
   const float truncation_length = volume_->GetTruncationLength();
   const float* depths = frame.depth_image->GetData();
   const Vector3f* colors = frame.color_image->GetData();
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
   const Projection& projection = frame.projection;
-  const Transform& transform = frame.transform;
+  const Transform& Tcw = frame.Tcw;
   Voxel* voxels = voxel_buffer.GetData();
 
   const int resolution = Block::resolution;
@@ -130,7 +130,7 @@ void Integrator::Integrate(const Frame& frame)
 
   CUDA_LAUNCH(IntegrateKernel, blocks, threads, 0, 0, indices, entries,
       voxel_length, block_length, truncation_length, depths, colors,
-      image_width, image_height, max_weight_, projection, transform, voxels);
+      image_width, image_height, max_weight_, projection, Tcw, voxels);
 }
 
 } // namespace vulcan

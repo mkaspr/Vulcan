@@ -60,7 +60,7 @@ class Transform
     VULCAN_HOST_DEVICE
     inline Transform operator*(const Transform& t) const
     {
-      return Transform(matrix_ * t.matrix_, inv_matrix_ * t.inv_matrix_);
+      return Transform(matrix_ * t.matrix_, t.inv_matrix_ * inv_matrix_);
     }
 
     VULCAN_HOST_DEVICE
