@@ -246,7 +246,7 @@ TEST(Tracer, ComputePoints)
   const int image_height = 480;
   const int bounds_width = 80;
   const int bounds_height = 60;
-  const float trunc_length = 0.02;
+  const float trunc_length = 0.04;
   const float voxel_length = 0.008;
   const float block_length = voxel_length * Block::resolution;
 
@@ -334,18 +334,18 @@ TEST(Tracer, ComputePoints)
   thrust::host_vector<float> found_depths(d_found_depths);
   thrust::host_vector<Vector3f> found_colors(d_found_colors);
 
-  {
-    cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
-    image.convertTo(image, CV_16UC1, 10000);
-    cv::imwrite("depth.png", image);
-  }
+  // {
+  //   cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
+  //   image.convertTo(image, CV_16UC1, 10000);
+  //   cv::imwrite("depth.png", image);
+  // }
 
-  {
-    cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
-    image.convertTo(image, CV_8UC3, 255);
-    cv::cvtColor(image, image, CV_BGR2RGB);
-    cv::imwrite("color.png", image);
-  }
+  // {
+  //   cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
+  //   image.convertTo(image, CV_8UC3, 255);
+  //   cv::cvtColor(image, image, CV_BGR2RGB);
+  //   cv::imwrite("color.png", image);
+  // }
 
   for (size_t i = 0; i < expected_depths.size(); ++i)
   {
@@ -400,19 +400,13 @@ TEST(Tracer, ComputeNormals)
 
   Frame frame;
 
-  // Projection projection;
-  // projection.SetFocalLength(546.723f, 553.914f);
-  // projection.SetCenterPoint(321.294f, 239.052f);
-
-  // const Transform Tcw =
-  //     Transform::Translate(0.3f, -1.3f, 3.7f) *
-  //     Transform::Rotate(0.7474f, 0.3438f, -0.3884f, 0.4152f);
-
   Projection projection;
-  projection.SetFocalLength(547, 547);
-  projection.SetCenterPoint(320, 240);
+  projection.SetFocalLength(546.723f, 553.914f);
+  projection.SetCenterPoint(321.294f, 239.052f);
 
-  const Transform Tcw;
+  const Transform Tcw =
+      Transform::Translate(0.3f, -1.3f, 3.7f) *
+      Transform::Rotate(0.7474f, 0.3438f, -0.3884f, 0.4152f);
 
   const Transform Twc = Tcw.Inverse();
 
@@ -496,7 +490,7 @@ TEST(Tracer, ComputeNormals)
   vulcan::ResetBoundsBuffer(p_bounds, d_bounds.size());
   vulcan::ComputeBounds(p_patches, p_bounds, bounds_width, patch_count);
 
-  const int iters = 1;
+  const int iters = 1000;
   const clock_t start = clock();
 
   for (int i = 0; i < iters; ++i)
@@ -516,43 +510,44 @@ TEST(Tracer, ComputeNormals)
   thrust::host_vector<float> found_depths(d_found_depths);
   thrust::host_vector<Vector3f> found_colors(d_found_colors);
 
-  {
-    cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
-    image.convertTo(image, CV_16UC1, 10000);
-    cv::imwrite("depth.png", image);
-  }
+  // {
+  //   cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
+  //   image.convertTo(image, CV_16UC1, 10000);
+  //   cv::imwrite("depth.png", image);
+  // }
 
-  {
-    cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
-    image.convertTo(image, CV_8UC3, 255);
-    cv::cvtColor(image, image, CV_BGR2RGB);
-    cv::imwrite("color.png", image);
-  }
+  // {
+  //   cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
+  //   image.convertTo(image, CV_8UC3, 255);
+  //   cv::cvtColor(image, image, CV_BGR2RGB);
+  //   cv::imwrite("color.png", image);
+  // }
 
   for (size_t i = 0; i < expected_depths.size(); ++i)
   {
     const int x = i % image_width;
     const int y = i / image_width;
+    const Vector2f uv(x + 0.5f, y + 0.5f);
+    const float r = (uv - center).Norm();
 
-    if (x <= 2 || x >= image_width  - 2 ||
-        y <= 2 || y >= image_height - 2)
+    if (197 <= r && r <= 203)
     {
       continue;
     }
 
     const float found = found_depths[i];
     const float expected = expected_depths[i];
-
-    ASSERT_NEAR(expected, found, 0.01);
+    ASSERT_NEAR(expected, found, 0.05);
   }
 
   for (size_t i = 0; i < expected_colors.size(); ++i)
   {
     const int x = i % image_width;
     const int y = i / image_width;
+    const Vector2f uv(x + 0.5f, y + 0.5f);
+    const float r = (uv - center).Norm();
 
-    if (x <= 2 || x >= image_width  - 2 ||
-        y <= 2 || y >= image_height - 2)
+    if (197 <= r && r <= 203)
     {
       continue;
     }

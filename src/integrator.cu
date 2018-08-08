@@ -74,11 +74,6 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
       voxel.distance = (prev_dist + curr_dist) / new_weight;
       voxel.color = (prev_color + curr_color) / new_weight;
       voxels[voxel_index] = voxel;
-
-      // if (block[0] == -13 && block[1] == -10 && block[2] == 23)
-      // {
-      //   printf("  integrating: %d %d %d = %f\n", block[0], block[1], block[2], distance);
-      // }
     }
   }
 }

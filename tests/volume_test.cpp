@@ -305,14 +305,6 @@ TEST_F(Volume, CreateAllocationRequests)
 
         const uint32_t hash_code = ((bx * P1) ^ (by * P2) ^ (bz * P3)) % K;
 
-        // const Block& block = curr_block;
-        // if ((block[0] == 67 && block[1] == -18 && block[2] == 224) ||
-        //     (x == 0 && y == 47))
-        // {
-        //   printf("(test) pixel: %d %d, t: %f, block: %d %d %d, hash: %u, K: %u\n",
-        //       x, y, t, block[0], block[1], block[2], hash_code, K);
-        // }
-
         if (exp_alloc_types[hash_code] == ALLOC_TYPE_MAIN &&
             exp_alloc_blocks[hash_code] != curr_block)
         {
@@ -329,13 +321,13 @@ TEST_F(Volume, CreateAllocationRequests)
         const int step_y = (dir[1] > 0) ? +1 : -1;
         const int step_z = (dir[2] > 0) ? +1 : -1;
 
-        const float delta_x = (block_length * (bx + step_x)) - current[0];
-        const float delta_y = (block_length * (by + step_y)) - current[1];
-        const float delta_z = (block_length * (bz + step_z)) - current[2];
+        const float delta_x = block_length * (bx + max(0, step_x)) - current[0];
+        const float delta_y = block_length * (by + max(0, step_y)) - current[1];
+        const float delta_z = block_length * (bz + max(0, step_z)) - current[2];
 
-        float rate_x = (dir[0] == 0) ? INFINITY : delta_x / dir[0];
-        float rate_y = (dir[1] == 0) ? INFINITY : delta_y / dir[1];
-        float rate_z = (dir[2] == 0) ? INFINITY : delta_z / dir[2];
+        float rate_x = delta_x / dir[0];
+        float rate_y = delta_y / dir[1];
+        float rate_z = delta_z / dir[2];
 
         if (rate_x < 1E-8f) rate_x = 1E-6f;
         if (rate_y < 1E-8f) rate_y = 1E-6f;
