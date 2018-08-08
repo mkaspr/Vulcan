@@ -12,6 +12,8 @@
 #include <vulcan/volume.h>
 #include <vulcan/voxel.h>
 
+#include <ctime>
+
 namespace vulcan
 {
 namespace testing
@@ -255,22 +257,15 @@ TEST(Tracer, ComputePoints)
 
   Frame frame;
 
-  // const Transform Tcw =
-  //     Transform::Translate(0.3f, -1.3f, 3.7f) *
-  //     Transform::Rotate(0.7474f, 0.3438f, -0.3884f, 0.4152f);
-
   const Transform Tcw =
+      Transform::Translate(0.3f, -1.3f, 3.7f) *
       Transform::Rotate(0.7474f, 0.3438f, -0.3884f, 0.4152f);
 
   const Transform Twc = Tcw.Inverse();
 
-  // Projection projection;
-  // projection.SetFocalLength(546.723f, 553.914f);
-  // projection.SetCenterPoint(321.294f, 239.052f);
-
   Projection projection;
-  projection.SetFocalLength(547, 547);
-  projection.SetCenterPoint(320, 240);
+  projection.SetFocalLength(546.723f, 553.914f);
+  projection.SetCenterPoint(321.294f, 239.052f);
 
   const float init_depth = 1.5f;
   std::shared_ptr<Image> depth_image;
@@ -335,6 +330,188 @@ TEST(Tracer, ComputePoints)
   vulcan::ComputePoints(p_entries, p_voxels, p_bounds, block_count,
       block_length, voxel_length, trunc_length, Twc, projection, p_found_depths,
       p_found_colors, image_width, image_height, bounds_width, bounds_height);
+
+  thrust::host_vector<float> found_depths(d_found_depths);
+  thrust::host_vector<Vector3f> found_colors(d_found_colors);
+
+  {
+    cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
+    image.convertTo(image, CV_16UC1, 10000);
+    cv::imwrite("depth.png", image);
+  }
+
+  {
+    cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
+    image.convertTo(image, CV_8UC3, 255);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("color.png", image);
+  }
+
+  for (size_t i = 0; i < expected_depths.size(); ++i)
+  {
+    const int x = i % image_width;
+    const int y = i / image_width;
+
+    if (x <= 2 || x >= image_width  - 2 ||
+        y <= 2 || y >= image_height - 2)
+    {
+      continue;
+    }
+
+    const float found = found_depths[i];
+    const float expected = expected_depths[i];
+
+    ASSERT_NEAR(expected, found, 0.01);
+  }
+
+  for (size_t i = 0; i < expected_colors.size(); ++i)
+  {
+    const int x = i % image_width;
+    const int y = i / image_width;
+
+    if (x <= 2 || x >= image_width  - 2 ||
+        y <= 2 || y >= image_height - 2)
+    {
+      continue;
+    }
+
+    const Vector3f& found = found_colors[i];
+    const Vector3f& expected = expected_colors[i];
+    ASSERT_FLOAT_EQ(expected[0], found[0]);
+    ASSERT_FLOAT_EQ(expected[1], found[1]);
+    ASSERT_FLOAT_EQ(expected[2], found[2]);
+  }
+}
+
+TEST(Tracer, ComputeNormals)
+{
+  const int image_width = 640;
+  const int image_height = 480;
+  const int bounds_width = 80;
+  const int bounds_height = 60;
+  const float trunc_length = 0.04;
+  const float voxel_length = 0.008;
+  const float block_length = voxel_length * Block::resolution;
+
+  std::shared_ptr<Volume> volume;
+  volume = std::make_shared<Volume>(4096, 2048);
+  volume->SetTruncationLength(trunc_length);
+  volume->SetVoxelLength(voxel_length);
+
+  Frame frame;
+
+  // Projection projection;
+  // projection.SetFocalLength(546.723f, 553.914f);
+  // projection.SetCenterPoint(321.294f, 239.052f);
+
+  // const Transform Tcw =
+  //     Transform::Translate(0.3f, -1.3f, 3.7f) *
+  //     Transform::Rotate(0.7474f, 0.3438f, -0.3884f, 0.4152f);
+
+  Projection projection;
+  projection.SetFocalLength(547, 547);
+  projection.SetCenterPoint(320, 240);
+
+  const Transform Tcw;
+
+  const Transform Twc = Tcw.Inverse();
+
+  const float init_depth = 0.0f;
+  std::shared_ptr<Image> depth_image;
+  depth_image = std::make_shared<Image>(image_width, image_height);
+  thrust::host_vector<float> expected_depths(depth_image->GetTotal());
+  thrust::fill(expected_depths.begin(), expected_depths.end(), init_depth);
+
+  const Vector3f init_color(0, 0, 0);
+  std::shared_ptr<ColorImage> color_image;
+  color_image = std::make_shared<ColorImage>(image_width, image_height);
+  thrust::host_vector<Vector3f> expected_colors(color_image->GetTotal());
+  thrust::fill(expected_colors.begin(), expected_colors.end(), init_color);
+
+  const Vector2f center = 0.5f * Vector2f(image_width, image_height);
+
+  for (int y = 0; y < image_height; ++y)
+  {
+    for (int x = 0; x < image_width; ++x)
+    {
+      const Vector2f uv(x + 0.5f, y + 0.5f);
+      const float r = (uv - center).Norm();
+
+      if (r < 200)
+      {
+        const int pixel = y * image_width + x;
+        expected_depths[pixel] = 2.0 + 2.0 * (1 - (r / 199));
+        expected_colors[pixel] = Vector3f(0, 1, 1);
+      }
+    }
+  }
+
+  thrust::device_ptr<float> depth_ptr(depth_image->GetData());
+  thrust::copy(expected_depths.begin(), expected_depths.end(), depth_ptr);
+
+  thrust::device_ptr<Vector3f> color_ptr(color_image->GetData());
+  thrust::copy(expected_colors.begin(), expected_colors.end(), color_ptr);
+
+  frame.Tcw = Tcw;
+  frame.projection = projection;
+  frame.depth_image = depth_image;
+  frame.color_image = color_image;
+
+  size_t visible_count = 0;
+
+  do
+  {
+    visible_count = volume->GetVisibleBlocks().GetSize();
+    volume->SetView(frame);
+  }
+  while (visible_count != volume->GetVisibleBlocks().GetSize());
+
+  Integrator integrator(volume);
+  integrator.Integrate(frame);
+
+  const int block_count = volume->GetMainBlockCount();
+  thrust::device_vector<Patch> d_patches(8192);
+  thrust::device_vector<Vector2f> d_bounds(bounds_width * bounds_height);
+  thrust::device_vector<float> d_found_depths(depth_image->GetTotal());
+  thrust::device_vector<Vector3f> d_found_colors(color_image->GetTotal());
+  thrust::device_vector<int> d_patch_count(1);
+
+  const int* p_indices = volume->GetVisibleBlocks().GetData();
+  const HashEntry* p_entries = volume->GetHashEntries().GetData();
+  const Voxel* p_voxels = volume->GetVoxels().GetData();
+  Patch* p_patches = d_patches.data().get();
+  Vector2f* p_bounds = d_bounds.data().get();
+  float* p_found_depths = d_found_depths.data().get();
+  Vector3f* p_found_colors = d_found_colors.data().get();
+  int* p_patch_count = d_patch_count.data().get();
+
+  d_patch_count[0] = 0;
+
+  vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
+      visible_count, image_width, image_height, bounds_width, bounds_height,
+      p_patches, p_patch_count);
+
+  const int patch_count = d_patch_count[0];
+
+  vulcan::ResetBoundsBuffer(p_bounds, d_bounds.size());
+  vulcan::ComputeBounds(p_patches, p_bounds, bounds_width, patch_count);
+
+  const int iters = 1;
+  const clock_t start = clock();
+
+  for (int i = 0; i < iters; ++i)
+  {
+    vulcan::ComputePoints(p_entries, p_voxels, p_bounds, block_count,
+        block_length, voxel_length, trunc_length, Twc, projection, p_found_depths,
+        p_found_colors, image_width, image_height, bounds_width, bounds_height);
+
+    cudaDeviceSynchronize();
+  }
+
+  const clock_t stop = clock();
+  const double time = double(stop - start) / CLOCKS_PER_SEC;
+  std::cout << "Time Per Iter: " << (time / iters) << std::endl;
+  std::cout << "FPS: " << 1 / (time / iters) << std::endl;
 
   thrust::host_vector<float> found_depths(d_found_depths);
   thrust::host_vector<Vector3f> found_colors(d_found_colors);

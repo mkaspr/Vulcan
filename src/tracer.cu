@@ -174,92 +174,49 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
           const int block_offset = Block::voxel_count * entry.data;
           const int voxel_offset = vz * rr + vy * r + vx;
           const Voxel voxel = voxels[block_offset + voxel_offset];
+          float sdf = voxel.distance;
 
-          if (voxel.distance <= 1.0f)
+          if (sdf <= 0.1f && sdf >= -0.5f)
           {
-            if (voxel.distance <= 0.1f && voxel.distance >= -0.5f)
-            {
-              // compute depth via trilinear interpolation
-              const float distance = voxel.distance; // TODO
+            // compute depth via trilinear interpolation
+            sdf = sdf; // TODO
+          }
 
-              // if (distance <= 0.0f) // TODO: uncomment
-              {
-                p += trunc_length * distance * dir;
-                const Vector3f Xcd = Vector3f(Tcw * Vector4f(p, 1.0f));
-                // sample color via trilinear interpolation at final depth
-                color = voxel.color; // TODO
-                final_depth = Xcd[2]; // TODO
-                break;
-              }
-              // else // TODO: uncomment
-              // {
-              //   p += trunc_length * distance * dir;
-              // }
-            }
-            else
-            {
-              int nvx, nvy, nvz;
-
-              do
-              {
-                p += trunc_length * voxel.distance * dir;
-                nvx = (p[0] - bx * block_length) / voxel_length;
-                nvy = (p[1] - by * block_length) / voxel_length;
-                nvz = (p[2] - bz * block_length) / voxel_length;
-              }
-              while (nvx == vx && nvy == vy && nvz == vz);
-            }
+          if (sdf <= 0.0f) // TODO: uncomment
+          {
+            p += trunc_length * sdf * dir;
+            // sample depth via trilinear interpolation at final point (again)
+            // sample color via trilinear interpolation at final point
+            const Vector3f Xcd = Vector3f(Tcw * Vector4f(p, 1.0f));
+            color = voxel.color; // TODO
+            final_depth = Xcd[2]; // TODO
+            break;
           }
           else
           {
-            p += trunc_length * dir;
+            p += max(voxel_length, trunc_length * sdf) * dir;
           }
         }
         else
         {
-          const int step_x = (dir[0] > 0) ? 1 : -1;
-          const int step_y = (dir[1] > 0) ? 1 : -1;
-          const int step_z = (dir[2] > 0) ? 1 : -1;
-
-          const float delta_x = block_length * (bx + step_x) - p[0];
-          const float delta_y = block_length * (by + step_y) - p[1];
-          const float delta_z = block_length * (bz + step_z) - p[2];
-
-          const float rate_x = (dir[0] == 0) ? INFINITY : delta_x / dir[0];
-          const float rate_y = (dir[1] == 0) ? INFINITY : delta_y / dir[1];
-          const float rate_z = (dir[2] == 0) ? INFINITY : delta_z / dir[2];
-
-          if (rate_x < rate_y)
-          {
-            if (rate_x < rate_z)
-            {
-              p += rate_x * dir;
-            }
-            else
-            {
-              p += rate_z * dir;
-            }
-          }
-          else
-          {
-            if (rate_y < rate_z)
-            {
-              p += rate_y * dir;
-            }
-            else
-            {
-              p += rate_z * dir;
-            }
-          }
+          p += block_length * dir;
         }
 
         const Vector3f Xcd = Vector3f(Tcw * Vector4f(p, 1.0f));
         depth = Xcd[2];
 
-        if (++iters >= 20) // TODO: remove
+        if (++iters >= 15) // TODO: remove
         {
+          printf("iteration reached\n");
+          color = Vector3f(1, 0, 0);
           break;
         }
+        // else if (depth > bound[1])
+        // {
+        //   printf("depth reached\n");
+        //   color = Vector3f(1, 1, 0);
+        //   break;
+        // }
       }
       while (depth < bound[1]);
     }

@@ -141,22 +141,14 @@ void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
     const int ez = floorf(end[2] * inv_block_length);
 
     // compute next blox boundary for each axis
-    const int ox = bx + ((bx < 0) ?
-        ((step_x < 0) ? -1 :  0):
-        ((step_x < 0) ?  0 : +1));
-
-    const int oy = by + ((by < 0) ?
-        ((step_y < 0) ? -1 :  0):
-        ((step_y < 0) ?  0 : +1));
-
-    const int oz = bz + ((bz < 0) ?
-        ((step_z < 0) ? -1 :  0):
-        ((step_z < 0) ?  0 : +1));
+    const float ox = block_length * (bx + max(0, step_x)) - begin[0];
+    const float oy = block_length * (by + max(0, step_y)) - begin[1];
+    const float oz = block_length * (bz + max(0, step_z)) - begin[2];
 
     // compute distance from start to next block along each axis
-    float tmax_x = std::abs((block_length * ox - begin[0]) / direction[0]);
-    float tmax_y = std::abs((block_length * oy - begin[1]) / direction[1]);
-    float tmax_z = std::abs((block_length * oz - begin[2]) / direction[2]);
+    float tmax_x = ox / direction[0];
+    float tmax_y = oy / direction[1];
+    float tmax_z = oz / direction[2];
 
     // TODO: handle nans better
     if (direction[0] == 0) tmax_x = 1E20;
@@ -182,13 +174,6 @@ void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
 
       // compute hash code for current block
       const uint32_t hash_code = ((bx * P1) ^ (by * P2) ^ (bz * P3)) % K;
-
-      // if ((block[0] == 51 && block[1] == -2 && block[2] == 224) ||
-      //     (x == 0 && y == 47))
-      // {
-      //   printf("pixel: %d %d, block: %d %d %d, hash: %u, K: %u\n",
-      //       x, y, block[0], block[1], block[2], hash_code, K);
-      // }
 
       // get hash entry for hash code
       HashEntry entry = hash_entries[hash_code];
