@@ -36,8 +36,8 @@ void Tracer::ComputePatches(const Frame& frame)
   const float block_length = Block::resolution * volume_->GetVoxelLength();
   const int image_height = frame.depth_image->GetHeight();
   const int image_width = frame.depth_image->GetWidth();
-  const int bounds_height = 80; // TODO: expose variable
-  const int bounds_width = 60; // TODO: expose variable
+  const int bounds_width = 80; // TODO: expose variable
+  const int bounds_height = 60; // TODO: expose variable
 
   ResetBufferSize();
 

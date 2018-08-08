@@ -334,18 +334,18 @@ TEST(Tracer, ComputePoints)
   thrust::host_vector<float> found_depths(d_found_depths);
   thrust::host_vector<Vector3f> found_colors(d_found_colors);
 
-  // {
-  //   cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
-  //   image.convertTo(image, CV_16UC1, 10000);
-  //   cv::imwrite("depth.png", image);
-  // }
+  {
+    cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
+    image.convertTo(image, CV_16UC1, 10000);
+    cv::imwrite("depth.png", image);
+  }
 
-  // {
-  //   cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
-  //   image.convertTo(image, CV_8UC3, 255);
-  //   cv::cvtColor(image, image, CV_BGR2RGB);
-  //   cv::imwrite("color.png", image);
-  // }
+  {
+    cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
+    image.convertTo(image, CV_8UC3, 255);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("color.png", image);
+  }
 
   for (size_t i = 0; i < expected_depths.size(); ++i)
   {
@@ -377,9 +377,9 @@ TEST(Tracer, ComputePoints)
 
     const Vector3f& found = found_colors[i];
     const Vector3f& expected = expected_colors[i];
-    ASSERT_FLOAT_EQ(expected[0], found[0]);
-    ASSERT_FLOAT_EQ(expected[1], found[1]);
-    ASSERT_FLOAT_EQ(expected[2], found[2]);
+    ASSERT_NEAR(expected[0], found[0], 0.01);
+    ASSERT_NEAR(expected[1], found[1], 0.01);
+    ASSERT_NEAR(expected[2], found[2], 0.01);
   }
 }
 
@@ -506,7 +506,7 @@ TEST(Tracer, ComputeNormals)
   vulcan::ResetBoundsBuffer(p_bounds, d_bounds.size());
   vulcan::ComputeBounds(p_patches, p_bounds, bounds_width, patch_count);
 
-  const int iters = 100;
+  const int iters = 1;
   const clock_t start = clock();
 
   for (int i = 0; i < iters; ++i)
@@ -530,25 +530,25 @@ TEST(Tracer, ComputeNormals)
   thrust::host_vector<Vector3f> found_colors(d_found_colors);
   thrust::host_vector<Vector3f> found_normals(d_found_normals);
 
-  {
-    cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
-    image.convertTo(image, CV_16UC1, 10000);
-    cv::imwrite("depth.png", image);
-  }
+  // {
+  //   cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
+  //   image.convertTo(image, CV_16UC1, 10000);
+  //   cv::imwrite("depth.png", image);
+  // }
 
-  {
-    cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
-    image.convertTo(image, CV_8UC3, 255);
-    cv::cvtColor(image, image, CV_BGR2RGB);
-    cv::imwrite("color.png", image);
-  }
+  // {
+  //   cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
+  //   image.convertTo(image, CV_8UC3, 255);
+  //   cv::cvtColor(image, image, CV_BGR2RGB);
+  //   cv::imwrite("color.png", image);
+  // }
 
-  {
-    cv::Mat image(image_height, image_width, CV_32FC3, found_normals.data());
-    image.convertTo(image, CV_8UC3, 127.5, 127.5);
-    cv::cvtColor(image, image, CV_BGR2RGB);
-    cv::imwrite("normal.png", image);
-  }
+  // {
+  //   cv::Mat image(image_height, image_width, CV_32FC3, found_normals.data());
+  //   image.convertTo(image, CV_8UC3, 127.5, 127.5);
+  //   cv::cvtColor(image, image, CV_BGR2RGB);
+  //   cv::imwrite("normal.png", image);
+  // }
 
   for (size_t i = 0; i < expected_depths.size(); ++i)
   {

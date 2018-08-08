@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Reading frames...";
 
-  std::vector<Frame> frames(16);
+  std::vector<Frame> frames(1);
 
   std::shared_ptr<Image> image;
   image = std::make_shared<Image>();
@@ -34,92 +34,28 @@ int main(int argc, char** argv)
 
   for (size_t i = 0; i < frames.size(); ++i)
   {
-    std::stringstream buffer;
-    buffer << "/home/mike/Code/matchbox/build/apps/matchbox_live/depth_";
-    buffer << std::setw(4) << std::setfill('0') << i << ".png";
-    const std::string file = buffer.str();
-    image->Load(file, 1.0 / 1000.0);
-    color_image->Load(file);
+    {
+      std::stringstream buffer;
+      buffer << "/home/mike/Code/matchbox/build/apps/matchbox_live/depth_";
+      buffer << std::setw(4) << std::setfill('0') << i << ".png";
+      LOG(INFO) << "Loading depth image: " << buffer.str();
+      image->Load(buffer.str(), 1.0 / 1000.0);
+    }
+
+    {
+      std::stringstream buffer;
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/frame_";
+      buffer << std::setw(4) << std::setfill('0') << i << "_left.png";
+      LOG(INFO) << "Loading color image: " << buffer.str();
+      color_image->Load(buffer.str(), 1.0 / 255.0);
+    }
 
     frames[i].Tcw = Transform::Translate(0, 0, 0);
-    frames[i].projection.SetFocalLength(1.0f * Vector2f(258.2812, 293.2650));
-    frames[i].projection.SetCenterPoint(1.0f * Vector2f(325.8055, 268.8094));
+    frames[i].projection.SetFocalLength(Vector2f(547, 547));
+    frames[i].projection.SetCenterPoint(Vector2f(320, 240));
     frames[i].color_image = color_image;
     frames[i].depth_image = image;
   }
-
-  // {
-  //   // const std::string folder = "/home/mike/Datasets/Work/kitchen02/images";
-  //   // const std::string folder = "/home/mike/Datasets/Work/volley02/images";
-  //   const std::string folder = "/home/mike/Code/matchbox/build/apps/matchbox_live";
-  //   const std::string file = folder + "/depth_0000.png";
-  //   image->Load(file, 1.0 / 1000.0);
-
-  //   frames[0].transform = Transform::Translate(0, 0, 0);
-  //   // frames[1].projection.SetFocalLength(567.3940, 567.4752);
-  //   // frames[1].projection.SetCenterPoint(319.9336, 240.4598);
-  //   frames[0].projection.SetFocalLength(0.5f * Vector2f(258.2812, 293.2650));
-  //   frames[0].projection.SetCenterPoint(0.5f * Vector2f(325.8055, 268.8094));
-  //   frames[0].depth_image = image;
-  // }
-
-  // {
-  //   // const std::string folder = "/home/mike/Datasets/Work/volley02/images";
-  //   const std::string folder = "/home/mike/Code/matchbox/build/apps/matchbox_live";
-  //   const std::string file = folder + "/depth_0001.png";
-  //   image->Load(file, 1.0 / 1000.0);
-
-  //   frames[1].transform = Transform::Translate(0, 0, 0);
-  //   // frames[1].projection.SetFocalLength(567.3940, 567.4752);
-  //   // frames[1].projection.SetCenterPoint(319.9336, 240.4598);
-  //   frames[1].projection.SetFocalLength(0.5f * Vector2f(258.2812, 293.2650));
-  //   frames[1].projection.SetCenterPoint(0.5f * Vector2f(325.8055, 268.8094));
-  //   frames[1].depth_image = image;
-  // }
-
-  // {
-  //   const std::string folder = "/home/mike/Datasets/Work/kitchen02/images";
-  //   const std::string file = folder + "/depth_0102.png";
-  //   image->Load(file, 1.0 / 1000.0);
-
-  //   frames[2].transform = Transform::Translate(0, 0, 0);
-  //   frames[2].projection.SetFocalLength(567.3940, 567.4752);
-  //   frames[2].projection.SetCenterPoint(319.9336, 240.4598);
-  //   frames[2].depth_image = image;
-  // }
-
-  // {
-  //   const std::string folder = "/home/mike/Datasets/Work/kitchen02/images";
-  //   const std::string file = folder + "/depth_0103.png";
-  //   image->Load(file, 1.0 / 1000.0);
-
-  //   frames[3].transform = Transform::Translate(0, 0, 0);
-  //   frames[3].projection.SetFocalLength(567.3940, 567.4752);
-  //   frames[3].projection.SetCenterPoint(319.9336, 240.4598);
-  //   frames[3].depth_image = image;
-  // }
-
-  // {
-  //   const std::string folder = "/home/mike/Datasets/Work/kitchen02/images";
-  //   const std::string file = folder + "/depth_0104.png";
-  //   image->Load(file, 1.0 / 1000.0);
-
-  //   frames[4].transform = Transform::Translate(0, 0, 0);
-  //   frames[4].projection.SetFocalLength(567.3940, 567.4752);
-  //   frames[4].projection.SetCenterPoint(319.9336, 240.4598);
-  //   frames[4].depth_image = image;
-  // }
-
-  // {
-  //   const std::string folder = "/home/mike/Datasets/Work/kitchen02/images";
-  //   const std::string file = folder + "/depth_0105.png";
-  //   image->Load(file, 1.0 / 1000.0);
-
-  //   frames[5].transform = Transform::Translate(0, 0, 0);
-  //   frames[5].projection.SetFocalLength(567.3940, 567.4752);
-  //   frames[5].projection.SetCenterPoint(319.9336, 240.4598);
-  //   frames[5].depth_image = image;
-  // }
 
   LOG(INFO) << "Creating volume...";
 
@@ -138,6 +74,7 @@ int main(int argc, char** argv)
   {
     // REMOVE
     volume->SetView(frame);
+    volume->SetView(frame);
     CUDA_ASSERT(cudaDeviceSynchronize());
     // // REMOVE
 
@@ -146,30 +83,44 @@ int main(int argc, char** argv)
     CUDA_ASSERT(cudaDeviceSynchronize());
   }
 
-  LOG(INFO) << "Extracting mesh...";
+  LOG(INFO) << "Tracing volume...";
 
-  Mesh mesh;
-  // DeviceMesh dmesh;
-  Extractor extractor(volume);
+  const int w = frames[0].color_image->GetWidth();
+  const int h = frames[0].color_image->GetHeight();
+  frames[0].normal_image = std::make_shared<ColorImage>();
+  frames[0].normal_image->Resize(w, h);
 
-  const clock_t start = clock();
+  Tracer tracer(volume);
+  tracer.Trace(frames[0]);
 
-  extractor.Extract(mesh);
-  // extractor.Extract(dmesh);
+  {
+    std::shared_ptr<Image> dimage = frames[0].depth_image;
+    thrust::device_ptr<float> d_data(dimage->GetData());
+    thrust::host_vector<float> data(d_data, d_data + dimage->GetTotal());
+    cv::Mat image(h, w, CV_32FC1, data.data());
+    image.convertTo(image, CV_16UC1, 10000);
+    cv::imwrite("depth.png", image);
+  }
 
-  // LOG(INFO) << "Detecting box...";
-  // Detector detector;
-  // const Vector3f box = detector.Detect(dmesh.points);
-  // LOG(INFO) << "Box position: " << box[0] << " " << box[1] << " " << box[2];
+  {
+    std::shared_ptr<ColorImage> cimage = frames[0].color_image;
+    thrust::device_ptr<Vector3f> d_data(cimage->GetData());
+    thrust::host_vector<Vector3f> data(d_data, d_data + cimage->GetTotal());
+    cv::Mat image(h, w, CV_32FC3, data.data());
+    image.convertTo(image, CV_8UC3, 255);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("color.png", image);
+  }
 
-  const clock_t stop = clock();
-  const double time = double(stop - start) / CLOCKS_PER_SEC;
-  LOG(INFO) << "Extract time: " << time << " (" << 1 / time << " fps)";
-
-  LOG(INFO) << "Writing mesh...";
-
-  Exporter exporter(FLAGS_output);
-  exporter.Export(mesh);
+  {
+    std::shared_ptr<ColorImage> nimage = frames[0].normal_image;
+    thrust::device_ptr<Vector3f> d_data(nimage->GetData());
+    thrust::host_vector<Vector3f> data(d_data, d_data + nimage->GetTotal());
+    cv::Mat image(h, w, CV_32FC3, data.data());
+    image.convertTo(image, CV_8UC3, 127.5, 127.5);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("normal.png", image);
+  }
 
   LOG(INFO) << "Success";
   return 0;

@@ -195,10 +195,11 @@ class ColorImage
     VULCAN_HOST
     void Load(const std::string& file, float scale = 1)
     {
-      cv::Mat image = cv::imread(file, CV_LOAD_IMAGE_ANYDEPTH);
+      cv::Mat image = cv::imread(file, CV_LOAD_IMAGE_ANYCOLOR);
       VULCAN_ASSERT_MSG(image.data != nullptr, "unable to load file");
       if (image.channels() == 1) cv::cvtColor(image, image, CV_GRAY2RGB);
       image.convertTo(image, CV_32FC3, scale);
+      cv::cvtColor(image, image, CV_BGR2RGB);
       Resize(image.cols, image.rows);
       const size_t bytes = sizeof(Vector3f) * image.total();
       const cudaMemcpyKind kind = cudaMemcpyHostToDevice;
