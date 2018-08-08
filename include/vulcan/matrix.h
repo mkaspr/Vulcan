@@ -159,6 +159,18 @@ class Matrix
     }
 
     VULCAN_HOST_DEVICE
+    inline Matrix Cross(const Matrix& rhs) const
+    {
+      static_assert(M == 3 || N == 3, "3D vector required");
+
+      Matrix result;
+      result[0] = (data_[1] * rhs[2]) - (data_[2] * rhs[1]);
+      result[1] = (data_[2] * rhs[0]) - (data_[0] * rhs[2]);
+      result[2] = (data_[0] * rhs[1]) - (data_[1] * rhs[0]);
+      return result;
+    }
+
+    VULCAN_HOST_DEVICE
     inline Matrix<T, N, M> Transpose()
     {
       Matrix<T, N, M> result;

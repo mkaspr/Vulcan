@@ -17,6 +17,8 @@ struct Frame
   std::shared_ptr<Image> depth_image;
 
   std::shared_ptr<ColorImage> color_image;
+
+  std::shared_ptr<ColorImage> normal_image;
 };
 
 } // namespace vulcan

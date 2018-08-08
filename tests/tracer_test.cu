@@ -394,7 +394,7 @@ TEST(Tracer, ComputeNormals)
   const float block_length = voxel_length * Block::resolution;
 
   std::shared_ptr<Volume> volume;
-  volume = std::make_shared<Volume>(4096, 2048);
+  volume = std::make_shared<Volume>(2 * 4096, 2 * 2048);
   volume->SetTruncationLength(trunc_length);
   volume->SetVoxelLength(voxel_length);
 
@@ -422,6 +422,12 @@ TEST(Tracer, ComputeNormals)
   thrust::host_vector<Vector3f> expected_colors(color_image->GetTotal());
   thrust::fill(expected_colors.begin(), expected_colors.end(), init_color);
 
+  const Vector3f init_normal(0, 0, 0);
+  std::shared_ptr<ColorImage> normal_image;
+  normal_image = std::make_shared<ColorImage>(image_width, image_height);
+  thrust::host_vector<Vector3f> expected_normals(normal_image->GetTotal());
+  thrust::fill(expected_normals.begin(), expected_normals.end(), init_normal);
+
   const Vector2f center = 0.5f * Vector2f(image_width, image_height);
 
   for (int y = 0; y < image_height; ++y)
@@ -434,8 +440,10 @@ TEST(Tracer, ComputeNormals)
       if (r < 200)
       {
         const int pixel = y * image_width + x;
-        expected_depths[pixel] = 2.0 + 2.0 * (1 - (r / 199));
+        expected_depths[pixel] = 2.0 + 2.0 * (r / 200);
         expected_colors[pixel] = Vector3f(0, 1, 1);
+
+        // TODO: compute normal
       }
     }
   }
@@ -446,10 +454,14 @@ TEST(Tracer, ComputeNormals)
   thrust::device_ptr<Vector3f> color_ptr(color_image->GetData());
   thrust::copy(expected_colors.begin(), expected_colors.end(), color_ptr);
 
+  thrust::device_ptr<Vector3f> normal_ptr(normal_image->GetData());
+  thrust::copy(expected_normals.begin(), expected_normals.end(), normal_ptr);
+
   frame.Tcw = Tcw;
   frame.projection = projection;
   frame.depth_image = depth_image;
   frame.color_image = color_image;
+  frame.normal_image = normal_image;
 
   size_t visible_count = 0;
 
@@ -468,6 +480,7 @@ TEST(Tracer, ComputeNormals)
   thrust::device_vector<Vector2f> d_bounds(bounds_width * bounds_height);
   thrust::device_vector<float> d_found_depths(depth_image->GetTotal());
   thrust::device_vector<Vector3f> d_found_colors(color_image->GetTotal());
+  thrust::device_vector<Vector3f> d_found_normals(normal_image->GetTotal());
   thrust::device_vector<int> d_patch_count(1);
 
   const int* p_indices = volume->GetVisibleBlocks().GetData();
@@ -477,6 +490,7 @@ TEST(Tracer, ComputeNormals)
   Vector2f* p_bounds = d_bounds.data().get();
   float* p_found_depths = d_found_depths.data().get();
   Vector3f* p_found_colors = d_found_colors.data().get();
+  Vector3f* p_found_normals = d_found_normals.data().get();
   int* p_patch_count = d_patch_count.data().get();
 
   d_patch_count[0] = 0;
@@ -502,6 +516,9 @@ TEST(Tracer, ComputeNormals)
     cudaDeviceSynchronize();
   }
 
+  vulcan::ComputeNormals(p_found_depths, projection, p_found_normals,
+      image_width, image_height);
+
   const clock_t stop = clock();
   const double time = double(stop - start) / CLOCKS_PER_SEC;
   std::cout << "Time Per Iter: " << (time / iters) << std::endl;
@@ -509,12 +526,13 @@ TEST(Tracer, ComputeNormals)
 
   thrust::host_vector<float> found_depths(d_found_depths);
   thrust::host_vector<Vector3f> found_colors(d_found_colors);
+  thrust::host_vector<Vector3f> found_normals(d_found_normals);
 
-  // {
-  //   cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
-  //   image.convertTo(image, CV_16UC1, 10000);
-  //   cv::imwrite("depth.png", image);
-  // }
+  {
+    cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
+    image.convertTo(image, CV_16UC1, 10000);
+    cv::imwrite("depth.png", image);
+  }
 
   // {
   //   cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
@@ -522,6 +540,13 @@ TEST(Tracer, ComputeNormals)
   //   cv::cvtColor(image, image, CV_BGR2RGB);
   //   cv::imwrite("color.png", image);
   // }
+
+  {
+    cv::Mat image(image_height, image_width, CV_32FC3, found_normals.data());
+    image.convertTo(image, CV_8UC3, 128, 127);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("normal.png", image);
+  }
 
   for (size_t i = 0; i < expected_depths.size(); ++i)
   {

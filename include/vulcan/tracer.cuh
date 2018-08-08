@@ -25,6 +25,9 @@ void ComputePoints(const HashEntry* entries, const Voxel* voxels,
     const Projection& projection, float* depths, Vector3f* colors,
     int image_width, int image_height, int bounds_width, int bounds_height);
 
+void ComputeNormals(const float* depths, const Projection& projection,
+    Vector3f* normals, int image_width, int image_height);
+
 void ResetBoundsBuffer(Vector2f* bounds, int count);
 
 } // namespace vulcan

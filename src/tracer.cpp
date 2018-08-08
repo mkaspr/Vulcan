@@ -76,15 +76,12 @@ void Tracer::ComputePoints(Frame& frame)
 
 void Tracer::ComputeNormals(Frame& frame)
 {
-  // for each pixel in traced frame
-
-    // sample neighboring pixels
-
-    // compute normal
-
-    // store in image
-
-  VULCAN_THROW("not implemented");
+  const float* depths = frame.depth_image->GetData();
+  Vector3f* normals = frame.normal_image->GetData();
+  const int image_width = frame.depth_image->GetWidth();
+  const int image_height = frame.depth_image->GetHeight();
+  const Projection& proj = frame.projection;
+  vulcan::ComputeNormals(depths, proj, normals, image_width, image_height);
 }
 
 void Tracer::ResetBoundsBuffer()
