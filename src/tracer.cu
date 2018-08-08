@@ -111,6 +111,234 @@ void ComputeBoundsKernel(const Patch* patches, Vector2f* bounds,
   }
 }
 
+VULCAN_DEVICE
+Voxel GetVoxel(int K, const HashEntry* entries, const Voxel* voxels,
+    int bx, int by, int bz, int vx, int vy, int vz)
+{
+  if (vx < 0)
+  {
+    --bx;
+    vx = Block::resolution + vx;
+  }
+  else if (vx >= Block::resolution)
+  {
+    ++bx;
+    vx = vx - Block::resolution;
+  }
+
+  if (vy < 0)
+  {
+    --by;
+    vy = Block::resolution + vy;
+  }
+  else if (vy >= Block::resolution)
+  {
+    ++by;
+    vy = vy - Block::resolution;
+  }
+
+  if (vz < 0)
+  {
+    --bz;
+    vz = Block::resolution + vz;
+  }
+  else if (vz >= Block::resolution)
+  {
+    ++bz;
+    vz = vz - Block::resolution;
+  }
+
+  const uint32_t P1 = 73856093;
+  const uint32_t P2 = 19349669;
+  const uint32_t P3 = 83492791;
+
+  const uint32_t hash_code = ((bx * P1) ^ (by * P2) ^ (bz * P3)) % K;
+  HashEntry entry = entries[hash_code];
+  bool found = false;
+
+  do
+  {
+    if (entry.block == Block(bx, by, bz))
+    {
+      found = true;
+      break;
+    }
+    else if (!entry.HasNext())
+    {
+      break;
+    }
+
+    entry = entries[entry.next];
+  }
+  while (true);
+
+  if (found && entry.IsAllocated())
+  {
+    const int r = Block::resolution;
+    const int rr = r * r;
+
+    const int block_offset = Block::voxel_count * entry.data;
+    const int voxel_offset = vz * rr + vy * r + vx;
+    return voxels[block_offset + voxel_offset];
+  }
+  else
+  {
+    return Voxel::Empty();
+  }
+}
+
+VULCAN_DEVICE
+Vector4f GetInterpolatedDistance(const HashEntry* entries, const Voxel* voxels,
+    int K, float block_length, float voxel_length, int bx, int by, int bz,
+    const HashEntry& entry, const Vector3f& p, float sdf)
+{
+  const float wx = (p[0] - bx * block_length) / voxel_length;
+  const float wy = (p[1] - by * block_length) / voxel_length;
+  const float wz = (p[2] - bz * block_length) / voxel_length;
+
+  const int r = Block::resolution;
+  const int rr = r * r;
+
+  const int block_offset = Block::voxel_count * entry.data;
+
+  Vector3f color;
+
+  const int i0x = floorf(wx - 0.5f);
+  const int i0y = floorf(wy - 0.5f);
+  const int i0z = floorf(wz - 0.5f);
+
+  if (i0x >= 0 && i0y >= 0 && i0z >= 0 &&
+      i0x < Block::resolution - 1 &&
+      i0y < Block::resolution - 1 &&
+      i0z < Block::resolution - 1)
+  {
+    // compute depth via trilinear interpolation
+    // all samples come from current block
+
+    Vector3f w1;
+    w1[0] = wx - (i0x + 0.5f);
+    w1[1] = wy - (i0y + 0.5f);
+    w1[2] = wz - (i0z + 0.5f);
+
+    Vector3f w0 = Vector3f::Ones() - w1;
+
+    const int i000 = (i0z + 0) * rr + (i0y + 0) * r + (i0x + 0);
+    const int i001 = (i0z + 0) * rr + (i0y + 0) * r + (i0x + 1);
+    const int i010 = (i0z + 0) * rr + (i0y + 1) * r + (i0x + 0);
+    const int i011 = (i0z + 0) * rr + (i0y + 1) * r + (i0x + 1);
+    const int i100 = (i0z + 1) * rr + (i0y + 0) * r + (i0x + 0);
+    const int i101 = (i0z + 1) * rr + (i0y + 0) * r + (i0x + 1);
+    const int i110 = (i0z + 1) * rr + (i0y + 1) * r + (i0x + 0);
+    const int i111 = (i0z + 1) * rr + (i0y + 1) * r + (i0x + 1);
+
+    const Voxel v000 = voxels[block_offset + i000];
+    const Voxel v001 = voxels[block_offset + i001];
+    const Voxel v010 = voxels[block_offset + i010];
+    const Voxel v011 = voxels[block_offset + i011];
+    const Voxel v100 = voxels[block_offset + i100];
+    const Voxel v101 = voxels[block_offset + i101];
+    const Voxel v110 = voxels[block_offset + i110];
+    const Voxel v111 = voxels[block_offset + i111];
+
+    const float n000 = v000.distance;
+    const float n001 = v001.distance;
+    const float n010 = v010.distance;
+    const float n011 = v011.distance;
+    const float n100 = v100.distance;
+    const float n101 = v101.distance;
+    const float n110 = v110.distance;
+    const float n111 = v111.distance;
+
+    const float n00 = n000 * w0[0] + n001 * w1[0];
+    const float n01 = n010 * w0[0] + n011 * w1[0];
+    const float n10 = n100 * w0[0] + n101 * w1[0];
+    const float n11 = n110 * w0[0] + n111 * w1[0];
+
+    const float n0 = n00 * w0[1] + n01 * w1[1];
+    const float n1 = n10 * w0[1] + n11 * w1[1];
+
+    const Vector3f c000 = v000.color;
+    const Vector3f c001 = v001.color;
+    const Vector3f c010 = v010.color;
+    const Vector3f c011 = v011.color;
+    const Vector3f c100 = v100.color;
+    const Vector3f c101 = v101.color;
+    const Vector3f c110 = v110.color;
+    const Vector3f c111 = v111.color;
+
+    const Vector3f c00 = c000 * w0[0] + c001 * w1[0];
+    const Vector3f c01 = c010 * w0[0] + c011 * w1[0];
+    const Vector3f c10 = c100 * w0[0] + c101 * w1[0];
+    const Vector3f c11 = c110 * w0[0] + c111 * w1[0];
+
+    const Vector3f c0 = c00 * w0[1] + c01 * w1[1];
+    const Vector3f c1 = c10 * w0[1] + c11 * w1[1];
+
+    sdf = n0 * w0[2] + n1 * w1[2];
+    color = c0 * w0[2] + c1 * w1[2];
+  }
+  else
+  {
+    // compute depth via trilinear interpolation
+    // requires sampling from other blocks
+
+    Vector3f w1;
+    w1[0] = wx - (i0x + 0.5f);
+    w1[1] = wy - (i0y + 0.5f);
+    w1[2] = wz - (i0z + 0.5f);
+
+    Vector3f w0 = Vector3f::Ones() - w1;
+
+    const Voxel v000 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 0, i0z + 0);
+    const Voxel v001 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 0, i0z + 0);
+    const Voxel v010 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 1, i0z + 0);
+    const Voxel v011 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 1, i0z + 0);
+    const Voxel v100 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 0, i0z + 1);
+    const Voxel v101 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 0, i0z + 1);
+    const Voxel v110 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 1, i0z + 1);
+    const Voxel v111 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 1, i0z + 1);
+
+    const float n000 = v000.distance;
+    const float n001 = v001.distance;
+    const float n010 = v010.distance;
+    const float n011 = v011.distance;
+    const float n100 = v100.distance;
+    const float n101 = v101.distance;
+    const float n110 = v110.distance;
+    const float n111 = v111.distance;
+
+    const float n00 = n000 * w0[0] + n001 * w1[0];
+    const float n01 = n010 * w0[0] + n011 * w1[0];
+    const float n10 = n100 * w0[0] + n101 * w1[0];
+    const float n11 = n110 * w0[0] + n111 * w1[0];
+
+    const float n0 = n00 * w0[1] + n01 * w1[1];
+    const float n1 = n10 * w0[1] + n11 * w1[1];
+
+    const Vector3f c000 = v000.color;
+    const Vector3f c001 = v001.color;
+    const Vector3f c010 = v010.color;
+    const Vector3f c011 = v011.color;
+    const Vector3f c100 = v100.color;
+    const Vector3f c101 = v101.color;
+    const Vector3f c110 = v110.color;
+    const Vector3f c111 = v111.color;
+
+    const Vector3f c00 = c000 * w0[0] + c001 * w1[0];
+    const Vector3f c01 = c010 * w0[0] + c011 * w1[0];
+    const Vector3f c10 = c100 * w0[0] + c101 * w1[0];
+    const Vector3f c11 = c110 * w0[0] + c111 * w1[0];
+
+    const Vector3f c0 = c00 * w0[1] + c01 * w1[1];
+    const Vector3f c1 = c10 * w0[1] + c11 * w1[1];
+
+    sdf = n0 * w0[2] + n1 * w1[2];
+    color = c0 * w0[2] + c1 * w1[2];
+  }
+
+  return Vector4f(sdf, color[0], color[1], color[2]);
+}
+
 VULCAN_GLOBAL
 void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
     const Vector2f* bounds, int block_count, float block_length,
@@ -168,9 +396,14 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
 
         if (entry.block == Block(bx, by, bz) && entry.IsAllocated())
         {
-          const int vx = (p[0] - bx * block_length) / voxel_length;
-          const int vy = (p[1] - by * block_length) / voxel_length;
-          const int vz = (p[2] - bz * block_length) / voxel_length;
+          const float wx = (p[0] - bx * block_length) / voxel_length;
+          const float wy = (p[1] - by * block_length) / voxel_length;
+          const float wz = (p[2] - bz * block_length) / voxel_length;
+
+          const int vx = wx;
+          const int vy = wy;
+          const int vz = wz;
+
           const int block_offset = Block::voxel_count * entry.data;
           const int voxel_offset = vz * rr + vy * r + vx;
           const Voxel voxel = voxels[block_offset + voxel_offset];
@@ -178,18 +411,41 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
 
           if (sdf <= 0.1f && sdf >= -0.5f)
           {
-            // compute depth via trilinear interpolation
-            sdf = sdf; // TODO
+            const Vector4f v = GetInterpolatedDistance(entries, voxels, K,
+                block_length, voxel_length, bx, by, bz, entry, p, sdf);
+
+            sdf = v[0];
+            color = Vector3f(v[1], v[2], v[3]);
           }
 
-          if (sdf <= 0.0f) // TODO: uncomment
+          if (sdf <= 0.0f)
           {
             p += trunc_length * sdf * dir;
-            // sample depth via trilinear interpolation at final point (again)
-            // sample color via trilinear interpolation at final point
+
+            const int bx = floorf(p[0] / block_length);
+            const int by = floorf(p[1] / block_length);
+            const int bz = floorf(p[2] / block_length);
+            const uint32_t hash_code = ((bx * P1) ^ (by * P2) ^ (bz * P3)) % K;
+            HashEntry entry = entries[hash_code];
+
+            while (entry.block != Block(bx, by, bz) && entry.HasNext())
+            {
+              entry = entries[entry.next];
+            }
+
+            if (entry.block == Block(bx, by, bz) && entry.IsAllocated())
+            {
+              const Vector4f v = GetInterpolatedDistance(entries, voxels, K,
+                  block_length, voxel_length, bx, by, bz, entry, p, sdf);
+
+              sdf = v[0];
+              color = Vector3f(v[1], v[2], v[3]);
+              p += trunc_length * sdf * dir;
+            }
+
             const Vector3f Xcd = Vector3f(Tcw * Vector4f(p, 1.0f));
-            color = voxel.color; // TODO
-            final_depth = Xcd[2]; // TODO
+            final_depth = Xcd[2];
+
             break;
           }
           else
@@ -205,7 +461,7 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
         const Vector3f Xcd = Vector3f(Tcw * Vector4f(p, 1.0f));
         depth = Xcd[2];
 
-        if (++iters >= 20) // TODO: remove
+        if (++iters >= 200) // TODO: remove
         {
           // printf("iteration reached\n");
           color = Vector3f(1, 0, 0);
@@ -269,30 +525,70 @@ void ComputeNormalsKernel(const float* depths, const Projection projection,
       float d;
       Vector2f uv;
 
-      uv[0] = (x - pad) + 0.5f;
+      uv[0] = (x + 0) + 0.5f;
       uv[1] = (y + 0) + 0.5f;
+      const Vector3f z0 = projection.Unproject(uv) * depth;
+
+      Vector3f x0;
       d = shared[(threadIdx.y + pad) * resolution + (threadIdx.x + 0)];
-      const Vector3f x0 = projection.Unproject(uv) * d;
 
-      uv[0] = (x + pad) + 0.5f;
-      uv[1] = (y + 0) + 0.5f;
+      if (d == 0)
+      {
+        x0 = z0;
+      }
+      else
+      {
+        uv[0] = (x - pad) + 0.5f;
+        uv[1] = (y + 0) + 0.5f;
+        x0 = projection.Unproject(uv) * d;
+      }
+
+      Vector3f x1;
       d = shared[(threadIdx.y + pad) * resolution + (threadIdx.x + 2 * pad)];
-      const Vector3f x1 = projection.Unproject(uv) * d;
 
-      uv[0] = (x + 0) + 0.5f;
-      uv[1] = (y - pad) + 0.5f;
+      if (d == 0)
+      {
+        x1 = z0;
+      }
+      else
+      {
+        uv[0] = (x + pad) + 0.5f;
+        uv[1] = (y + 0) + 0.5f;
+        x1 = projection.Unproject(uv) * d;
+      }
+
+      Vector3f y0;
       d = shared[(threadIdx.y + 0) * resolution + (threadIdx.x + pad)];
-      const Vector3f y0 = projection.Unproject(uv) * d;
 
-      uv[0] = (x + 0) + 0.5f;
-      uv[1] = (y + pad) + 0.5f;
+      if (d == 0)
+      {
+        y0 = z0;
+      }
+      else
+      {
+        uv[0] = (x + 0) + 0.5f;
+        uv[1] = (y - pad) + 0.5f;
+        y0 = projection.Unproject(uv) * d;
+      }
+
+      Vector3f y1;
       d = shared[(threadIdx.y + 2 * pad) * resolution + (threadIdx.x + pad)];
-      const Vector3f y1 = projection.Unproject(uv) * d;
+
+      if (d == 0)
+      {
+        y1 = z0;
+      }
+      else
+      {
+        uv[0] = (x + 0) + 0.5f;
+        uv[1] = (y + pad) + 0.5f;
+        y1 = projection.Unproject(uv) * d;
+      }
 
       const Vector3f dx = x0 - x1;
       const Vector3f dy = y0 - y1;
 
-      normal = dx.Cross(dy);
+      normal = dy.Cross(dx);
       normal.Normalize();
     }
 

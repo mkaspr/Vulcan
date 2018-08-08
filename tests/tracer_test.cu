@@ -435,13 +435,15 @@ TEST(Tracer, ComputeNormals)
     for (int x = 0; x < image_width; ++x)
     {
       const Vector2f uv(x + 0.5f, y + 0.5f);
-      const float r = (uv - center).Norm();
+      const float rr = (uv - center).SquaredNorm();
+      const float r = std::sqrt(rr);
 
       if (r < 200)
       {
         const int pixel = y * image_width + x;
-        expected_depths[pixel] = 2.0 + 2.0 * (r / 200);
-        expected_colors[pixel] = Vector3f(0, 1, 1);
+        const float z = std::sqrt(200 * 200 - rr);
+        expected_depths[pixel] = 4.0 - 2.0 * (z / 200);
+        expected_colors[pixel] = Vector3f(0, (x % 40 < 20) ^ (y % 40 < 20), 1);
 
         // TODO: compute normal
       }
@@ -504,7 +506,7 @@ TEST(Tracer, ComputeNormals)
   vulcan::ResetBoundsBuffer(p_bounds, d_bounds.size());
   vulcan::ComputeBounds(p_patches, p_bounds, bounds_width, patch_count);
 
-  const int iters = 1000;
+  const int iters = 100;
   const clock_t start = clock();
 
   for (int i = 0; i < iters; ++i)
@@ -534,16 +536,16 @@ TEST(Tracer, ComputeNormals)
     cv::imwrite("depth.png", image);
   }
 
-  // {
-  //   cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
-  //   image.convertTo(image, CV_8UC3, 255);
-  //   cv::cvtColor(image, image, CV_BGR2RGB);
-  //   cv::imwrite("color.png", image);
-  // }
+  {
+    cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
+    image.convertTo(image, CV_8UC3, 255);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("color.png", image);
+  }
 
   {
     cv::Mat image(image_height, image_width, CV_32FC3, found_normals.data());
-    image.convertTo(image, CV_8UC3, 128, 127);
+    image.convertTo(image, CV_8UC3, 127.5, 127.5);
     cv::cvtColor(image, image, CV_BGR2RGB);
     cv::imwrite("normal.png", image);
   }
