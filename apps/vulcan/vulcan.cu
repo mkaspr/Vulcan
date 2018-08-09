@@ -22,41 +22,6 @@ int main(int argc, char** argv)
   google::InitGoogleLogging(argv[0]);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-  LOG(INFO) << "Reading frames...";
-
-  std::vector<Frame> frames(1);
-
-  std::shared_ptr<Image> image;
-  image = std::make_shared<Image>();
-
-  std::shared_ptr<ColorImage> color_image;
-  color_image = std::make_shared<ColorImage>();
-
-  for (size_t i = 0; i < frames.size(); ++i)
-  {
-    {
-      std::stringstream buffer;
-      buffer << "/home/mike/Code/matchbox/build/apps/matchbox_live/depth_";
-      buffer << std::setw(4) << std::setfill('0') << i << ".png";
-      LOG(INFO) << "Loading depth image: " << buffer.str();
-      image->Load(buffer.str(), 1.0 / 1000.0);
-    }
-
-    {
-      std::stringstream buffer;
-      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/frame_";
-      buffer << std::setw(4) << std::setfill('0') << i << "_left.png";
-      LOG(INFO) << "Loading color image: " << buffer.str();
-      color_image->Load(buffer.str(), 1.0 / 255.0);
-    }
-
-    frames[i].Tcw = Transform::Translate(0, 0, 0);
-    frames[i].projection.SetFocalLength(Vector2f(547, 547));
-    frames[i].projection.SetCenterPoint(Vector2f(320, 240));
-    frames[i].color_image = color_image;
-    frames[i].depth_image = image;
-  }
-
   LOG(INFO) << "Creating volume...";
 
   std::shared_ptr<Volume> volume;
@@ -68,33 +33,90 @@ int main(int argc, char** argv)
 
   Integrator integrator(volume);
 
+  LOG(INFO) << "Creating tracer...";
+
+  Tracer tracer(volume);
+
+  LOG(INFO) << "Reading frames...";
+
+  const int frame_offset = 500;
+  std::vector<Frame> frames(1);
+
+  int w = 0;
+  int h = 0;
+
+  for (size_t i = 0; i < frames.size(); ++i)
+  {
+    const int fid = frame_offset + i;
+
+    std::shared_ptr<Image> depth_image;
+    depth_image = std::make_shared<Image>();
+
+    std::shared_ptr<ColorImage> color_image;
+    color_image = std::make_shared<ColorImage>();
+
+    {
+      std::stringstream buffer;
+      buffer << "/home/mike/Code/matchbox/build/apps/matchbox_live/depth_";
+      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      LOG(INFO) << "Loading depth image: " << buffer.str();
+      depth_image->Load(buffer.str(), 1.0 / 1000.0);
+    }
+
+    if (i == 0)
+    {
+      w = depth_image->GetWidth();
+      h = depth_image->GetHeight();
+    }
+
+    {
+      std::stringstream buffer;
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/frame_";
+      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      LOG(INFO) << "Loading color image: " << buffer.str();
+      color_image->Load(buffer.str(), 1.0 / 255.0);
+      VULCAN_ASSERT(color_image->GetHeight() == h);
+      VULCAN_ASSERT(color_image->GetWidth() == w);
+    }
+
+
+    frames[i].Tcw = Transform::Translate(0, 0, 0);
+    frames[i].projection.SetFocalLength(Vector2f(547, 547));
+    frames[i].projection.SetCenterPoint(Vector2f(320, 240));
+    frames[i].color_image = color_image;
+    frames[i].depth_image = depth_image;
+  }
+
+  Frame trace_frame;
+  trace_frame.Tcw = Transform::Translate(0, 0, 0);
+  trace_frame.projection.SetFocalLength(Vector2f(547, 547));
+  trace_frame.projection.SetCenterPoint(Vector2f(320, 240));
+  trace_frame.depth_image = std::make_shared<Image>(w, h);
+  trace_frame.color_image = std::make_shared<ColorImage>(w, h);
+  trace_frame.normal_image = std::make_shared<ColorImage>(w, h);
+
   LOG(INFO) << "Integrating frames...";
+
+  const clock_t start = clock();
 
   for (const Frame& frame : frames)
   {
-    // REMOVE
     volume->SetView(frame);
     volume->SetView(frame);
-    CUDA_ASSERT(cudaDeviceSynchronize());
-    // // REMOVE
-
     volume->SetView(frame);
     integrator.Integrate(frame);
-    CUDA_ASSERT(cudaDeviceSynchronize());
+    tracer.Trace(trace_frame);
   }
 
-  LOG(INFO) << "Tracing volume...";
+  CUDA_ASSERT(cudaDeviceSynchronize());
 
-  const int w = frames[0].color_image->GetWidth();
-  const int h = frames[0].color_image->GetHeight();
-  frames[0].normal_image = std::make_shared<ColorImage>();
-  frames[0].normal_image->Resize(w, h);
-
-  Tracer tracer(volume);
-  tracer.Trace(frames[0]);
+  const clock_t stop = clock();
+  const double time = double(stop - start) / (CLOCKS_PER_SEC * frames.size());
+  LOG(INFO) << "Time: " << time << std::endl;
+  LOG(INFO) << "FPS:  " << 1 / time << std::endl;
 
   {
-    std::shared_ptr<Image> dimage = frames[0].depth_image;
+    std::shared_ptr<Image> dimage = trace_frame.depth_image;
     thrust::device_ptr<float> d_data(dimage->GetData());
     thrust::host_vector<float> data(d_data, d_data + dimage->GetTotal());
     cv::Mat image(h, w, CV_32FC1, data.data());
@@ -103,7 +125,7 @@ int main(int argc, char** argv)
   }
 
   {
-    std::shared_ptr<ColorImage> cimage = frames[0].color_image;
+    std::shared_ptr<ColorImage> cimage = trace_frame.color_image;
     thrust::device_ptr<Vector3f> d_data(cimage->GetData());
     thrust::host_vector<Vector3f> data(d_data, d_data + cimage->GetTotal());
     cv::Mat image(h, w, CV_32FC3, data.data());
@@ -113,7 +135,7 @@ int main(int argc, char** argv)
   }
 
   {
-    std::shared_ptr<ColorImage> nimage = frames[0].normal_image;
+    std::shared_ptr<ColorImage> nimage = trace_frame.normal_image;
     thrust::device_ptr<Vector3f> d_data(nimage->GetData());
     thrust::host_vector<Vector3f> data(d_data, d_data + nimage->GetTotal());
     cv::Mat image(h, w, CV_32FC3, data.data());
