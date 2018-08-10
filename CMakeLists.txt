@@ -61,6 +61,7 @@ set(CPP_HEADERS
   ${CPP_HEADER_DIR}/matrix.h
   ${CPP_HEADER_DIR}/mesh.h
   ${CPP_HEADER_DIR}/projection.h
+  ${CPP_HEADER_DIR}/sampler.h
   ${CPP_HEADER_DIR}/tracer.h
   ${CPP_HEADER_DIR}/tracker.h
   ${CPP_HEADER_DIR}/transform.h
@@ -99,6 +100,7 @@ set(CUDA_SOURCES
   ${CUDA_SOURCE_DIR}/detector.cu
   ${CUDA_SOURCE_DIR}/extractor.cu
   ${CUDA_SOURCE_DIR}/integrator.cu
+  ${CUDA_SOURCE_DIR}/sampler.cu
   ${CUDA_SOURCE_DIR}/tracer.cu
   ${CUDA_SOURCE_DIR}/tracker.cu
   ${CUDA_SOURCE_DIR}/volume.cu

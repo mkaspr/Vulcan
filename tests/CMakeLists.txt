@@ -37,6 +37,7 @@ set(CPP_SOURCES
 set(CUDA_SOURCES
   util_test.cu
   integrator_test.cu
+  sampler_test.cu
   tracer_test.cu
 )
 
