@@ -94,6 +94,18 @@ class Projection
       return Unproject(Vector2f(u, v));
     }
 
+    VULCAN_HOST_DEVICE
+    inline Vector3f Unproject(const Vector2f& uv, float d) const
+    {
+      return d * Unproject(uv);
+    }
+
+    VULCAN_HOST_DEVICE
+    inline Vector3f Unproject(float u, float v, float d) const
+    {
+      return Unproject(Vector2f(u, v), d);
+    }
+
   protected:
 
     Vector2f focal_length_;
