@@ -72,27 +72,27 @@ void GetGradientKernel(const T* image, T* gx, T* gy, int width, int height)
 
   if (x < width && y < height)
   {
-    float xx = 0;
-    float yy = 0;
+    T xx;
+    T yy;
 
     const int sx = threadIdx.x + 1;
     const int sy = threadIdx.y + 1;
+
+    xx  = 1 * shared[shared_resolution * (sy - 1) + (sx + 1)];
+    xx += 2 * shared[shared_resolution * (sy + 0) + (sx + 1)];
+    xx += 1 * shared[shared_resolution * (sy + 1) + (sx + 1)];
 
     xx -= 1 * shared[shared_resolution * (sy - 1) + (sx - 1)];
     xx -= 2 * shared[shared_resolution * (sy + 0) + (sx - 1)];
     xx -= 1 * shared[shared_resolution * (sy + 1) + (sx - 1)];
 
-    xx += 1 * shared[shared_resolution * (sy - 1) + (sx + 1)];
-    xx += 2 * shared[shared_resolution * (sy + 0) + (sx + 1)];
-    xx += 1 * shared[shared_resolution * (sy + 1) + (sx + 1)];
+    yy  = 1 * shared[shared_resolution * (sy + 1) + (sx - 1)];
+    yy += 2 * shared[shared_resolution * (sy + 1) + (sx + 0)];
+    yy += 1 * shared[shared_resolution * (sy + 1) + (sx + 1)];
 
     yy -= 1 * shared[shared_resolution * (sy - 1) + (sx - 1)];
     yy -= 2 * shared[shared_resolution * (sy - 1) + (sx + 0)];
     yy -= 1 * shared[shared_resolution * (sy - 1) + (sx + 1)];
-
-    yy += 1 * shared[shared_resolution * (sy + 1) + (sx - 1)];
-    yy += 2 * shared[shared_resolution * (sy + 1) + (sx + 0)];
-    yy += 1 * shared[shared_resolution * (sy + 1) + (sx + 1)];
 
     gx[index] = 0.125f * xx;
     gy[index] = 0.125f * yy;
@@ -130,6 +130,22 @@ inline void GetSubimage(const T& image, T& subimage, Sampler::Filter filter)
   }
 }
 
+template <typename T>
+void GetGradient(const T& image, T& gradient_x, T& gradient_y)
+{
+  const int w = image.GetWidth();
+  const int h = image.GetHeight();
+  gradient_x.Resize(w, h);
+  gradient_y.Resize(w, h);
+
+  const dim3 total(w, h);
+  const dim3 threads(16, 16);
+  const dim3 blocks = GetKernelBlocks(total, threads);
+
+  CUDA_LAUNCH(GetGradientKernel, blocks, threads, 0, 0, image.GetData(),
+      gradient_x.GetData(), gradient_y.GetData(), w, h);
+}
+
 Sampler::Sampler()
 {
 }
@@ -149,23 +165,13 @@ void Sampler::GetSubimage(const ColorImage& image, ColorImage& subimage,
 void Sampler::GetGradient(const Image& image, Image& gradient_x,
     Image& gradient_y) const
 {
-  const int w = image.GetWidth();
-  const int h = image.GetHeight();
-  gradient_x.Resize(w, h);
-  gradient_y.Resize(w, h);
-
-  const dim3 total(w, h);
-  const dim3 threads(16, 16);
-  const dim3 blocks = GetKernelBlocks(total, threads);
-
-  CUDA_LAUNCH(GetGradientKernel, blocks, threads, 0, 0, image.GetData(),
-      gradient_x.GetData(), gradient_y.GetData(), w, h);
+  vulcan::GetGradient(image, gradient_x, gradient_y);
 }
 
 void Sampler::GetGradient(const ColorImage& image, ColorImage& gradient_x,
     ColorImage& gradient_y) const
 {
-
+  vulcan::GetGradient(image, gradient_x, gradient_y);
 }
 
 } // namespace vulcan

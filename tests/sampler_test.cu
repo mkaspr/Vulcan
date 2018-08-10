@@ -108,6 +108,120 @@ TEST(Sampler, Profile)
   std::cout << "FPS:  " << 1 / time << std::endl;
 }
 
+TEST(Sampler, GetColorSubimage)
+{
+  ColorImage image, expected, found;
+
+  image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
+
+  Sampler sampler;
+  sampler.GetSubimage(image, found, Sampler::FILTER_LINEAR);
+  sampler.GetSubimage(found, expected, Sampler::FILTER_LINEAR);
+
+  {
+    thrust::device_ptr<Vector3f> d_ptr(image.GetData());
+    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + image.GetTotal());
+    cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC3, ptr.data());
+    cv::cvtColor(mat, mat, CV_RGB2BGR);
+    cv::imshow("Image", mat);
+  }
+
+  {
+    thrust::device_ptr<Vector3f> d_ptr(found.GetData());
+    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + found.GetTotal());
+    cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC3, ptr.data());
+    cv::cvtColor(mat, mat, CV_RGB2BGR);
+    cv::imshow("Found", mat);
+  }
+
+  {
+    thrust::device_ptr<Vector3f> d_ptr(expected.GetData());
+    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + expected.GetTotal());
+    cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC3, ptr.data());
+    cv::cvtColor(mat, mat, CV_RGB2BGR);
+    cv::imshow("Expected", mat);
+  }
+
+  cv::waitKey(0);
+}
+
+TEST(Sampler, GetColorGradient)
+{
+  ColorImage image, expected, found;
+
+  image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
+
+  Sampler sampler;
+  sampler.GetGradient(image, expected, found);
+
+  {
+    thrust::device_ptr<Vector3f> d_ptr(image.GetData());
+    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + image.GetTotal());
+    cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC3, ptr.data());
+    cv::cvtColor(mat, mat, CV_RGB2BGR);
+    cv::imshow("Image", mat);
+  }
+
+  {
+    thrust::device_ptr<Vector3f> d_ptr(found.GetData());
+    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + found.GetTotal());
+    cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC3, ptr.data());
+    cv::cvtColor(mat, mat, CV_RGB2BGR);
+
+    for (size_t i = 0; i < mat.total(); ++i)
+    {
+      mat.at<Vector3f>(i) += 0.5f;
+    }
+
+    cv::imshow("Gradient Y", mat);
+  }
+
+  {
+    thrust::device_ptr<Vector3f> d_ptr(expected.GetData());
+    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + expected.GetTotal());
+    cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC3, ptr.data());
+    cv::cvtColor(mat, mat, CV_RGB2BGR);
+
+    for (size_t i = 0; i < mat.total(); ++i)
+    {
+      mat.at<Vector3f>(i) += 0.5f;
+    }
+
+    cv::imshow("Gradient X", mat);
+  }
+
+  cv::waitKey(0);
+}
+
+TEST(Sampler, ColorProfile)
+{
+  const int levels = 4;
+  Image intensities[levels];
+  Image gradients[levels][2];
+  Sampler sampler;
+
+  intensities[0].Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
+
+  const int max_iters = 1000;
+  const clock_t start = clock();
+
+  for (int i = 0; i < max_iters; ++i)
+  {
+    sampler.GetGradient(intensities[0], gradients[0][0], gradients[0][1]);
+
+    for (int j = 1; j < levels; ++j)
+    {
+      sampler.GetSubimage(intensities[j - 1], intensities[j]);
+      sampler.GetGradient(intensities[j - 1], gradients[j][0], gradients[j][1]);
+    }
+  }
+
+  const clock_t stop = clock();
+  const double time = double(stop - start) / (CLOCKS_PER_SEC * max_iters);
+  std::cout << "Time: " << time << std::endl;
+  std::cout << "FPS:  " << 1 / time << std::endl;
+}
+
 } // namespace testing
 
 } // namespace vulcan
