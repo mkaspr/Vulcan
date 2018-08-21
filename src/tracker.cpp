@@ -206,13 +206,6 @@ void Tracker::ResizeGradientBuffer()
   gradient_.Resize(GetParameterCount());
 }
 
-int Tracker::GetResidualCount(const Frame& frame) const
-{
-  const int w = frame.depth_image->GetWidth();
-  const int h = frame.depth_image->GetHeight();
-  return w * h;
-}
-
 int Tracker::GetParameterCount() const
 {
   return translation_enabled_ ? 6 : 3;

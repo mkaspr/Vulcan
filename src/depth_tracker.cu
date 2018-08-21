@@ -6,6 +6,8 @@
 
 namespace vulcan
 {
+namespace
+{
 
 VULCAN_GLOBAL
 void ComputeResidualKernel(const Transform Tmc, const float* keyframe_depths,
@@ -134,6 +136,8 @@ void ComputeJacobianKernel(const Transform Tmc, const float* keyframe_depths,
     }
   }
 }
+
+} // namespace
 
 void DepthTracker::ComputeResidual(const Frame& frame)
 {

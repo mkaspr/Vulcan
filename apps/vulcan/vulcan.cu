@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  DepthTracker tracker;
+  ColorTracker tracker;
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -57,8 +57,8 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Integrating frames...";
 
-  const int frame_start = 0;
-  const int frame_stop  = 500;
+  const int frame_start = 2;
+  const int frame_stop  = 200;
   const clock_t start = clock();
   bool first_frame = true;
 
@@ -74,8 +74,8 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
@@ -85,8 +85,8 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
-      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);

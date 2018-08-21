@@ -32,7 +32,7 @@ class Tracker
 
     bool IsSolving() const;
 
-    void BeginSolve(const Frame& frame);
+    virtual void BeginSolve(const Frame& frame);
 
     void CreateState(const Frame& frame);
 
@@ -68,7 +68,7 @@ class Tracker
 
     void ResizeGradientBuffer();
 
-    int GetResidualCount(const Frame& frame) const;
+    virtual int GetResidualCount(const Frame& frame) const = 0;
 
     int GetParameterCount() const;
 

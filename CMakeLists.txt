@@ -48,6 +48,7 @@ set(CPP_HEADER_DIR include/vulcan)
 set(CPP_HEADERS
   ${CPP_HEADER_DIR}/block.h
   ${CPP_HEADER_DIR}/buffer.h
+  ${CPP_HEADER_DIR}/color_tracker.h
   ${CPP_HEADER_DIR}/depth_tracker.h
   ${CPP_HEADER_DIR}/detector.h
   ${CPP_HEADER_DIR}/device.h
@@ -77,6 +78,7 @@ set(CPP_HEADERS
 set(CPP_SOURCE_DIR src)
 
 set(CPP_SOURCES
+  ${CPP_SOURCE_DIR}/color_tracker.cpp
   ${CPP_SOURCE_DIR}/depth_tracker.cpp
   ${CPP_SOURCE_DIR}/exporter.cpp
   ${CPP_SOURCE_DIR}/frame.cpp
@@ -99,6 +101,7 @@ set(CUDA_HEADERS
 set(CUDA_SOURCE_DIR src)
 
 set(CUDA_SOURCES
+  ${CUDA_SOURCE_DIR}/color_tracker.cu
   ${CUDA_SOURCE_DIR}/depth_tracker.cu
   ${CUDA_SOURCE_DIR}/detector.cu
   ${CUDA_SOURCE_DIR}/extractor.cu
