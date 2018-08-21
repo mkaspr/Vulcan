@@ -465,15 +465,9 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
         if (++iters >= 100) // TODO: remove
         {
           // printf("iteration reached\n");
-          color = Vector3f(1, 0, 0);
+          // color = Vector3f(1, 0, 0);
           break;
         }
-        // else if (depth > bound[1])
-        // {
-        //   printf("depth reached\n");
-        //   color = Vector3f(1, 1, 0);
-        //   break;
-        // }
       }
       while (depth < bound[1]);
     }

@@ -18,8 +18,6 @@ class Tracker
 
     virtual ~Tracker();
 
-    std::shared_ptr<const Volume> GetVolume() const;
-
     std::shared_ptr<const Frame> GetKeyframe() const;
 
     void SetKeyframe(std::shared_ptr<const Frame> keyframe);
@@ -46,9 +44,9 @@ class Tracker
 
     void ComputeOperands(const Frame& frame);
 
-    void ComputeResidual(const Frame& frame);
+    virtual void ComputeResidual(const Frame& frame) = 0;
 
-    void ComputeJacobian(const Frame& frame);
+    virtual void ComputeJacobian(const Frame& frame) = 0;
 
     void ComputeHessian();
 
