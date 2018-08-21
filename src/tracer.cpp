@@ -69,8 +69,8 @@ void Tracer::ComputePoints(Frame& frame)
   frame.color_image->Resize(w, h);
 
   vulcan::ComputePoints(entries.GetData(), voxels.GetData(), bounds_.GetData(),
-      block_count, block_length, voxel_length, trunc_length, frame.Tcw,
-      frame.projection, frame.depth_image->GetData(),
+      block_count, block_length, voxel_length, trunc_length,
+      frame.Tcw.Inverse(), frame.projection, frame.depth_image->GetData(),
       frame.color_image->GetData(), w, h, 80, 60);
 }
 

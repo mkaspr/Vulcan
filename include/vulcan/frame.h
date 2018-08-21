@@ -14,6 +14,12 @@ struct Frame
 
   Projection projection;
 
+  // TODO: add separate color transform
+
+  // TODO: add separate color projection
+
+  // TODO: add light model (transform, intensity, etc)
+
   std::shared_ptr<Image> depth_image;
 
   std::shared_ptr<ColorImage> color_image;

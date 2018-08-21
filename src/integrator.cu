@@ -49,7 +49,8 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     const float depth = depths[image_index];
 
     // ignore invalid depth values
-    if (depth <= 0.05f || depth >= 5.0f) return; // TODO: expose parameters
+    // if (depth <= 0.05f || depth >= 5.0f) return; // TODO: expose parameters
+    if (depth <= 0.1f || depth >= 5.0f) return; // TODO: expose parameters
 
     // compute signed distance
     const float distance = depth - Xcp[2];
@@ -102,6 +103,12 @@ void Integrator::SetMaxWeight(float weight)
 
 void Integrator::Integrate(const Frame& frame)
 {
+  // TODO: handle color and depth images that aren't co-located
+  // for all visible voxels, project onto depth image and integrate
+  // for all visible voxels, project onto color image and integrate
+  // should check to see if current voxel is withing truncation band though
+  // simply ignore occlusions
+
   const Buffer<int>& index_buffer = volume_->GetVisibleBlocks();
   const Buffer<HashEntry>& entry_buffer = volume_->GetHashEntries();
   Buffer<Voxel>& voxel_buffer = volume_->GetVoxels();

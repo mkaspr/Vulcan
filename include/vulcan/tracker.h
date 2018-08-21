@@ -14,7 +14,7 @@ class Tracker
 {
   public:
 
-    Tracker(std::shared_ptr<const Volume> volume);
+    Tracker();
 
     virtual ~Tracker();
 
@@ -24,73 +24,67 @@ class Tracker
 
     void SetKeyframe(std::shared_ptr<const Frame> keyframe);
 
+    bool GetTranslationEnabled() const;
+
+    void SetTranslationEnabled(bool enabled);
+
     void Track(Frame& frame);
 
   protected:
 
     bool IsSolving() const;
 
-    bool HasHaulted() const;
+    void BeginSolve(const Frame& frame);
 
-    bool HasConverged() const;
+    void CreateState(const Frame& frame);
 
-    double GetCostChange() const;
+    void ValidateKeyframe() const;
 
-    double GetMinCostChange() const;
+    void ValidateFrame(const Frame& frame) const;
 
-    void BeginSolve();
+    void UpdateSolve(Frame& frame);
 
-    void CreateState();
+    void ComputeOperands(const Frame& frame);
 
-    void ValidateKeyframe();
+    void ComputeResidual(const Frame& frame);
 
-    void UpdateSolve();
-
-    void ComputeOperands();
-
-    void ComputeResidual();
-
-    void ComputeJacobian();
+    void ComputeJacobian(const Frame& frame);
 
     void ComputeHessian();
 
     void ComputeGradient();
 
-    void ComputeUpdate();
+    void ComputeUpdate(Frame& frame);
 
-    void UpdateState();
-
-    void UpdateCost();
+    void UpdateState(const Frame& frame);
 
     void EndSolve();
+
+    void ResizeBuffers(const Frame& frame);
+
+    void ResizeResidualBuffer(const Frame& frame);
+
+    void ResizeJacobianBuffer(const Frame& frame);
+
+    void ResizeHessianBuffer();
+
+    void ResizeGradientBuffer();
+
+    int GetResidualCount(const Frame& frame) const;
+
+    int GetParameterCount() const;
 
   private:
 
     void Initialize();
 
-    void CreateHandle();
-
-    void CreateResidualBuffer();
-
-    void CreateJacobianBuffer();
-
-    void CreateHessianBuffer();
-
-    void CreateGradientBuffer();
-
   protected:
+
+    bool translation_enabled_;
 
     int iteration_;
 
     int max_iterations_;
-
-    double curr_cost_;
-
-    double prev_cost_;
-
-    double change_threshold_;
-
-    std::shared_ptr<const Volume> volume_;
 
     std::shared_ptr<const Frame> keyframe_;
 

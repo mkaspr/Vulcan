@@ -488,7 +488,7 @@ VULCAN_GLOBAL
 void ComputeNormalsKernel(const float* depths, const Projection projection,
     Vector3f* normals, int image_width, int image_height)
 {
-  const int pad = 1;
+  const int pad = 2;
   const int resolution = (PATCH_SIZE + 2 * pad);
   const int shared_size = resolution * resolution;
   VULCAN_SHARED float shared[shared_size];
@@ -588,12 +588,15 @@ void ComputeNormalsKernel(const float* depths, const Projection projection,
       const Vector3f dx = x0 - x1;
       const Vector3f dy = y0 - y1;
 
-      normal = dy.Cross(dx);
-      normal.Normalize();
+      if (dx.SquaredNorm() > 0 && dy.SquaredNorm() > 0)
+      {
+        normal = dy.Cross(dx);
+        normal.Normalize();
+      }
     }
 
     const int output = y * image_width + x;
-    normals[output] = normal.Normalized();
+    normals[output] = normal;
   }
 }
 
