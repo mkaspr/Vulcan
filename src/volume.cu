@@ -334,20 +334,29 @@ void HandleAllocationRequestsKernel(AllocationType* allocation_types,
         entry_index = atomicAdd(&excess_pointer, 1);
         VULCAN_DEBUG_MSG(entry_index < max_count, "excess memory exhausted");
 
-        // link with parent entry
-        hash_entries[other_index].next = entry_index;
+        // check if valid excess index returned
+        if (entry_index < max_count)
+        {
+          // link with parent entry
+          hash_entries[other_index].next = entry_index;
 
-        // mark new block as visible
-        block_visibility[entry_index] = VISIBILITY_TRUE;
+          // mark new block as visible
+          block_visibility[entry_index] = VISIBILITY_TRUE;
+        }
       }
 
       // request new voxel entry index
       const int voxel_index = atomicSub(&voxel_pointer, 1);
       VULCAN_DEBUG_MSG(voxel_index >= 0, "voxel memory exhausted");
-      entry.data = free_voxel_blocks[voxel_index];
 
-      // assign new entry to hash table
-      hash_entries[entry_index] = entry;
+      // check if both entry and voxel indices are valid
+      if (entry_index < max_count && voxel_index >= 0)
+      {
+        entry.data = free_voxel_blocks[voxel_index];
+
+        // assign new entry to hash table
+        hash_entries[entry_index] = entry;
+      }
 
       // mark allocation request as handled
       allocation_types[index] = ALLOC_TYPE_NONE;

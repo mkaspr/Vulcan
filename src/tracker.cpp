@@ -84,8 +84,6 @@ void Tracker::Track(Frame& frame)
   }
 
   EndSolve();
-
-  // std::cout << "Transform:" << std::endl << frame.Tcw.GetMatrix() << std::endl;
 }
 
 bool Tracker::IsSolving() const
@@ -133,32 +131,6 @@ void Tracker::CreateState(const Frame& frame)
 
 void Tracker::UpdateSolve(Frame& frame)
 {
-  // std::cout << "=======================" << std::endl;
-
-  // Eigen::Matrix<double, Eigen::Dynamic, 1> r1(residuals_.GetSize());
-  // Eigen::Matrix<double, Eigen::Dynamic, 1> r2(residuals_.GetSize());
-  // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> jacobian;
-  // jacobian.resize(GetResidualCount(frame), GetParameterCount());
-
-  // ComputeResidual(frame);
-  // ComputeOperands(frame);
-  // residuals_.CopyToHost(r1.data());
-  // jacobian_.CopyToHost(jacobian.data());
-
-  // Frame other_frame = frame;
-  // const float step = 1E-6f;
-  // other_frame.Tcw = Transform::Translate(0, 0, step) * other_frame.Tcw;
-  // ComputeResidual(other_frame);
-  // ComputeOperands(other_frame);
-  // residuals_.CopyToHost(r2.data());
-
-  // const int offset = 400 * 640 + 320;
-  // std::cout << "analytical:" << std::endl << jacobian.block<10, 6>(offset, 0) << std::endl;
-  // std::cout << std::endl;
-  // std::cout << "finite diff:" << std::endl << (r2.block<10, 1>(offset, 0) - r1.block<10, 1>(offset, 0)) / step << std::endl;
-
-  // std::cout << "=======================" << std::endl;
-
   ComputeOperands(frame);
   ComputeUpdate(frame);
   UpdateState(frame);
@@ -192,20 +164,6 @@ void Tracker::ComputeUpdate(Frame& frame)
 
   update = -solver.solve(gradient);
   frame.Tcw = exp(update).Inverse() * frame.Tcw;
-
-  // frame.Tcw = exp(update) * frame.Tcw;
-  // frame.Tcw = frame.Tcw * exp(update).Inverse();
-  // frame.Tcw = frame.Tcw * exp(update);
-
-  // Eigen::Matrix<double, Eigen::Dynamic, 1> residuals(residuals_.GetSize());
-  // residuals_.CopyToHost(residuals.data());
-
-  // std::cout << "residuals " << iteration_ << ":   " <<  residuals.block<10, 1>(400 * 640 + 320, 0).transpose() << std::endl;
-  // std::cout << "gradient " << iteration_ << ":    " <<  gradient.transpose() << std::endl;
-  // std::cout << "udpate " << iteration_ << ":      " <<  update.transpose() << std::endl;
-  // std::cout << "translation " << iteration_ << ": " <<  frame.Tcw.GetTranslation().Transpose() << std::endl;
-  // std::cout << "hessian:" << std::endl << hessian << std::endl;
-  // std::cout << std::endl;
 }
 
 void Tracker::UpdateState(const Frame& frame)

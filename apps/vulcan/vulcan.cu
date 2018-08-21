@@ -41,17 +41,30 @@ int main(int argc, char** argv)
 
   Tracker tracker;
 
-  LOG(INFO) << "Reading frames...";
+  LOG(INFO) << "Creating tracing frame...";
 
-  const int frame_offset = 210;
-  std::vector<Frame> frames(16);
+  int w = 640;
+  int h = 480;
 
-  int w = 0;
-  int h = 0;
+  std::shared_ptr<Frame> trace_frame;
+  trace_frame = std::make_shared<Frame>();
+  trace_frame->Tcw = Transform::Translate(0, 0, 0);
+  trace_frame->projection.SetFocalLength(Vector2f(547, 547));
+  trace_frame->projection.SetCenterPoint(Vector2f(320, 240));
+  trace_frame->depth_image = std::make_shared<Image>(w, h);
+  trace_frame->color_image = std::make_shared<ColorImage>(w, h);
+  trace_frame->normal_image = std::make_shared<ColorImage>(w, h);
 
-  for (size_t i = 0; i < frames.size(); ++i)
+  LOG(INFO) << "Integrating frames...";
+
+  const int frame_start = 0;
+  const int frame_stop  = 500;
+  const clock_t start = clock();
+  bool first_frame = true;
+
+  for (int i = frame_start; i <= frame_stop; ++i)
   {
-    const int fid = frame_offset + i;
+    const int fid = i;
 
     std::shared_ptr<Image> depth_image;
     depth_image = std::make_shared<Image>();
@@ -66,12 +79,8 @@ int main(int argc, char** argv)
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
-    }
-
-    if (i == 0)
-    {
-      w = depth_image->GetWidth();
-      h = depth_image->GetHeight();
+      VULCAN_ASSERT(depth_image->GetHeight() == h);
+      VULCAN_ASSERT(depth_image->GetWidth() == w);
     }
 
     {
@@ -85,83 +94,83 @@ int main(int argc, char** argv)
       VULCAN_ASSERT(color_image->GetWidth() == w);
     }
 
+    Frame frame;
+    frame.Tcw = Transform::Translate(0, 0, 0);
+    frame.projection.SetFocalLength(Vector2f(547, 547));
+    frame.projection.SetCenterPoint(Vector2f(320, 240));
+    frame.color_image = color_image;
+    frame.depth_image = depth_image;
 
-    frames[i].Tcw = Transform::Translate(0, 0, 0);
-    frames[i].projection.SetFocalLength(Vector2f(547, 547));
-    frames[i].projection.SetCenterPoint(Vector2f(320, 240));
-    frames[i].color_image = color_image;
-    frames[i].depth_image = depth_image;
-  }
-
-  std::shared_ptr<Frame> trace_frame;
-  trace_frame = std::make_shared<Frame>();
-  trace_frame->Tcw = Transform::Translate(0, 0, 0);
-  trace_frame->projection.SetFocalLength(Vector2f(547, 547));
-  trace_frame->projection.SetCenterPoint(Vector2f(320, 240));
-  trace_frame->depth_image = std::make_shared<Image>(w, h);
-  trace_frame->color_image = std::make_shared<ColorImage>(w, h);
-  trace_frame->normal_image = std::make_shared<ColorImage>(w, h);
-
-  LOG(INFO) << "Integrating frames...";
-
-  const clock_t start = clock();
-  bool first_frame = true;
-
-  for (Frame& frame : frames)
-  {
     if (first_frame)
     {
       first_frame = false;
     }
     else
     {
+      LOG(INFO) << "Tracking frame " << i << "...";
       frame.Tcw = trace_frame->Tcw;
       tracker.SetKeyframe(trace_frame);
       tracker.SetTranslationEnabled(true);
       tracker.Track(frame);
+
+      LOG(INFO) << "Current pose:" << std::endl << frame.Tcw.GetMatrix() << std::endl;
     }
 
+    LOG(INFO) << "Viewing frame " << i << "...";
     volume->SetView(frame);
+
+    LOG(INFO) << "Integrating frame " << i << "...";
     integrator.Integrate(frame);
+
+    LOG(INFO) << "Tracing frame " << i << "...";
     trace_frame->Tcw = frame.Tcw;
     tracer.Trace(*trace_frame);
+
+    {
+      LOG(INFO) << "Writing depth image...";
+      std::stringstream buffer;
+      buffer << "depth_" << std::setw(4) << std::setfill('0') << fid << ".png";
+      std::shared_ptr<Image> dimage = trace_frame->depth_image;
+      thrust::device_ptr<float> d_data(dimage->GetData());
+      thrust::host_vector<float> data(d_data, d_data + dimage->GetTotal());
+      cv::Mat image(h, w, CV_32FC1, data.data());
+      image.convertTo(image, CV_16UC1, 1000);
+      cv::imwrite(buffer.str(), image);
+    }
+
+    {
+      LOG(INFO) << "Writing color image...";
+      std::stringstream buffer;
+      buffer << "color_" << std::setw(4) << std::setfill('0') << fid << ".png";
+      std::shared_ptr<ColorImage> cimage = trace_frame->color_image;
+      thrust::device_ptr<Vector3f> d_data(cimage->GetData());
+      thrust::host_vector<Vector3f> data(d_data, d_data + cimage->GetTotal());
+      cv::Mat image(h, w, CV_32FC3, data.data());
+      image.convertTo(image, CV_8UC3, 255);
+      cv::cvtColor(image, image, CV_BGR2RGB);
+      cv::imwrite(buffer.str(), image);
+    }
+
+    {
+      LOG(INFO) << "Writing normal image...";
+      std::stringstream buffer;
+      buffer << "normal_" << std::setw(4) << std::setfill('0') << fid << ".png";
+      std::shared_ptr<ColorImage> nimage = trace_frame->normal_image;
+      thrust::device_ptr<Vector3f> d_data(nimage->GetData());
+      thrust::host_vector<Vector3f> data(d_data, d_data + nimage->GetTotal());
+      cv::Mat image(h, w, CV_32FC3, data.data());
+      image.convertTo(image, CV_8UC3, 127.5, 127.5);
+      cv::cvtColor(image, image, CV_BGR2RGB);
+      cv::imwrite(buffer.str(), image);
+    }
   }
 
   CUDA_ASSERT(cudaDeviceSynchronize());
 
   const clock_t stop = clock();
-  const double time = double(stop - start) / (CLOCKS_PER_SEC * frames.size());
+  const double time = double(stop - start) / (CLOCKS_PER_SEC * frame_stop);
   LOG(INFO) << "Time: " << time << std::endl;
   LOG(INFO) << "FPS:  " << 1 / time << std::endl;
-
-  {
-    std::shared_ptr<Image> dimage = trace_frame->depth_image;
-    thrust::device_ptr<float> d_data(dimage->GetData());
-    thrust::host_vector<float> data(d_data, d_data + dimage->GetTotal());
-    cv::Mat image(h, w, CV_32FC1, data.data());
-    image.convertTo(image, CV_16UC1, 1000);
-    cv::imwrite("depth.png", image);
-  }
-
-  {
-    std::shared_ptr<ColorImage> cimage = trace_frame->color_image;
-    thrust::device_ptr<Vector3f> d_data(cimage->GetData());
-    thrust::host_vector<Vector3f> data(d_data, d_data + cimage->GetTotal());
-    cv::Mat image(h, w, CV_32FC3, data.data());
-    image.convertTo(image, CV_8UC3, 255);
-    cv::cvtColor(image, image, CV_BGR2RGB);
-    cv::imwrite("color.png", image);
-  }
-
-  {
-    std::shared_ptr<ColorImage> nimage = trace_frame->normal_image;
-    thrust::device_ptr<Vector3f> d_data(nimage->GetData());
-    thrust::host_vector<Vector3f> data(d_data, d_data + nimage->GetTotal());
-    cv::Mat image(h, w, CV_32FC3, data.data());
-    image.convertTo(image, CV_8UC3, 127.5, 127.5);
-    cv::cvtColor(image, image, CV_BGR2RGB);
-    cv::imwrite("normal.png", image);
-  }
 
   LOG(INFO) << "Success";
   return 0;

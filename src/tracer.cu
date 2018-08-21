@@ -56,8 +56,9 @@ void ComputePatchesKernel(const int* indices, const HashEntry* entries,
           bmax[0] = clamp<short>(max((short)ceilf(uv[0]), bmax[0]), 0, bounds_width - 1);
           bmax[1] = clamp<short>(max((short)ceilf(uv[1]), bmax[1]), 0, bounds_height - 1);
 
-          depth_bounds[0] = min(Xcp[2], depth_bounds[0]);
-          depth_bounds[1] = max(Xcp[2], depth_bounds[1]);
+          // TODO: expose parameters
+          depth_bounds[0] = clamp<float>(min(Xcp[2], depth_bounds[0]), 0.1f, 5.0f);
+          depth_bounds[1] = clamp<float>(max(Xcp[2], depth_bounds[1]), 0.1f, 5.0f);
         }
       }
     }
@@ -67,7 +68,7 @@ void ComputePatchesKernel(const int* indices, const HashEntry* entries,
   const int ry = max(0, bmax[1] - bmin[1]);
   const int gx = (rx + patch_size - 1) / patch_size;
   const int gy = (ry + patch_size - 1) / patch_size;
-  const int count = gx * gy;
+  const int count = (depth_bounds[1] > depth_bounds[0]) ? gx * gy : 0;
 
   const int offset = PrefixSum<BLOCK_SIZE>(count, threadIdx.x, *patch_count);
 

@@ -55,11 +55,6 @@ void ComputeResidualKernel(const Transform Tmc, const float* keyframe_depths,
             if (delta.SquaredNorm() < 0.05)
             {
               residual = delta.Dot(normal);
-
-              // if (frame_x == 320 && frame_y == 400)
-              // {
-              //   printf("residual:      %f\n", residual);
-              // }
             }
           }
         }
