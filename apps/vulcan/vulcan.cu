@@ -58,7 +58,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 2;
-  const int frame_stop  = 200;
+  const int frame_stop  = 500;
   const clock_t start = clock();
   bool first_frame = true;
 

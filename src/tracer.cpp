@@ -51,6 +51,7 @@ void Tracer::ComputePatches(const Frame& frame)
 
 void Tracer::ComputeBounds(const Frame& frame)
 {
+  // TODO: expose variable
   ResetBoundsBuffer();
   const int total = patches_.GetSize();
   vulcan::ComputeBounds(patches_.GetData(), bounds_.GetData(), 80, total);
@@ -68,6 +69,7 @@ void Tracer::ComputePoints(Frame& frame)
   const float block_length = Block::resolution * voxel_length;
   frame.color_image->Resize(w, h);
 
+  // TODO: expose variable
   vulcan::ComputePoints(entries.GetData(), voxels.GetData(), bounds_.GetData(),
       block_count, block_length, voxel_length, trunc_length,
       frame.Tcw.Inverse(), frame.projection, frame.depth_image->GetData(),
@@ -76,12 +78,7 @@ void Tracer::ComputePoints(Frame& frame)
 
 void Tracer::ComputeNormals(Frame& frame)
 {
-  const float* depths = frame.depth_image->GetData();
-  Vector3f* normals = frame.normal_image->GetData();
-  const int image_width = frame.depth_image->GetWidth();
-  const int image_height = frame.depth_image->GetHeight();
-  const Projection& proj = frame.projection;
-  vulcan::ComputeNormals(depths, proj, normals, image_width, image_height);
+  frame.ComputeNormals();
 }
 
 void Tracer::ResetBoundsBuffer()

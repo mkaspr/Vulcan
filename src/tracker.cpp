@@ -44,7 +44,7 @@ inline Transform exp(const Eigen::VectorXd& omega)
 
 Tracker::Tracker() :
   translation_enabled_(true),
-  max_iterations_(5)
+  max_iterations_(20)
 {
   Initialize();
 }
@@ -164,6 +164,12 @@ void Tracker::ComputeUpdate(Frame& frame)
 
   update = -solver.solve(gradient);
   frame.Tcw = exp(update).Inverse() * frame.Tcw;
+
+  // TODO: verifiy proper use
+  if (update.norm() < 1E-4)
+  {
+    iteration_ = max_iterations_;
+  }
 }
 
 void Tracker::UpdateState(const Frame& frame)

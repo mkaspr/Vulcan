@@ -110,7 +110,6 @@ void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
     const float depth = depths[y * image_width + x];
 
     // ignore invalid depth values
-    // if (depth <= 0.05f || depth >= 5.0f) return; // TODO: expose parameters
     if (depth <= 0.1f || depth >= 5.0f) return; // TODO: expose parameters
 
     // compute inferred 3D point in world frame frame depth

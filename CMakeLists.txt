@@ -92,6 +92,7 @@ set(CPP_SOURCES
 set(CUDA_HEADER_DIR include/vulcan)
 
 set(CUDA_HEADERS
+  ${CUDA_HEADER_DIR}/frame.cuh
   ${CUDA_HEADER_DIR}/tracer.cuh
   ${CUDA_HEADER_DIR}/util.cuh
 )
@@ -105,6 +106,7 @@ set(CUDA_SOURCES
   ${CUDA_SOURCE_DIR}/depth_tracker.cu
   ${CUDA_SOURCE_DIR}/detector.cu
   ${CUDA_SOURCE_DIR}/extractor.cu
+  ${CUDA_SOURCE_DIR}/frame.cu
   ${CUDA_SOURCE_DIR}/integrator.cu
   ${CUDA_SOURCE_DIR}/sampler.cu
   ${CUDA_SOURCE_DIR}/tracer.cu

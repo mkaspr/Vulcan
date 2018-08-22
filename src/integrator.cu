@@ -49,7 +49,6 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     const float depth = depths[image_index];
 
     // ignore invalid depth values
-    // if (depth <= 0.05f || depth >= 5.0f) return; // TODO: expose parameters
     if (depth <= 0.1f || depth >= 5.0f) return; // TODO: expose parameters
 
     // compute signed distance
