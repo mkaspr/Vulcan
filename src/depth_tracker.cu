@@ -13,8 +13,8 @@ VULCAN_GLOBAL
 void ComputeResidualKernel(const Transform Tmc, const float* keyframe_depths,
     const Vector3f* keyframe_normals, const Projection keyframe_projection,
     int keyframe_width, int keyframe_height, const float* frame_depths,
-    const Projection frame_projection, int frame_width, int frame_height,
-    double* residuals)
+    const Vector3f* frame_normals, const Projection frame_projection,
+    int frame_width, int frame_height, double* residuals)
 {
   const int frame_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int frame_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -43,16 +43,18 @@ void ComputeResidualKernel(const Transform Tmc, const float* keyframe_depths,
 
         if (keyframe_depth > 0)
         {
-          const Vector3f normal = keyframe_normals[keyframe_index];
+          const Vector3f frame_normal = frame_normals[frame_index];
+          const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
 
-          if (normal.SquaredNorm() > 0)
+          if (keyframe_normal.SquaredNorm() > 0 &&
+              frame_normal.Dot(keyframe_normal) > 0.5f)
           {
             const Vector3f Ymp = keyframe_projection.Unproject(keyframe_uv, keyframe_depth);
             const Vector3f delta = Xmp - Ymp;
 
             if (delta.SquaredNorm() < 0.05)
             {
-              residual = delta.Dot(normal);
+              residual = delta.Dot(keyframe_normal);
             }
           }
         }
@@ -68,8 +70,8 @@ VULCAN_GLOBAL
 void ComputeJacobianKernel(const Transform Tmc, const float* keyframe_depths,
     const Vector3f* keyframe_normals, const Projection keyframe_projection,
     int keyframe_width, int keyframe_height, const float* frame_depths,
-    const Projection frame_projection, int frame_width, int frame_height,
-    double* jacobian)
+    const Vector3f* frame_normals, const Projection frame_projection,
+    int frame_width, int frame_height, double* jacobian)
 {
   const int frame_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int frame_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -98,24 +100,26 @@ void ComputeJacobianKernel(const Transform Tmc, const float* keyframe_depths,
 
         if (keyframe_depth > 0)
         {
-          const Vector3f normal = keyframe_normals[keyframe_index];
+          const Vector3f frame_normal = frame_normals[frame_index];
+          const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
 
-          if (normal.SquaredNorm() > 0)
+          if (keyframe_normal.SquaredNorm() > 0 &&
+              frame_normal.Dot(keyframe_normal) > 0.5f)
           {
             const Vector3f Ymp = keyframe_projection.Unproject(keyframe_uv, keyframe_depth);
             const Vector3f delta = Xmp - Ymp;
 
             if (delta.SquaredNorm() < 0.05)
             {
-              dfdx[0] = normal[2] * Xcp[1] - normal[1] * Xcp[2];
-              dfdx[1] = normal[0] * Xcp[2] - normal[2] * Xcp[0];
-              dfdx[2] = normal[1] * Xcp[0] - normal[0] * Xcp[1];
+              dfdx[0] = keyframe_normal[2] * Xcp[1] - keyframe_normal[1] * Xcp[2];
+              dfdx[1] = keyframe_normal[0] * Xcp[2] - keyframe_normal[2] * Xcp[0];
+              dfdx[2] = keyframe_normal[1] * Xcp[0] - keyframe_normal[0] * Xcp[1];
 
               if (translation_enabled)
               {
-                dfdx[3] = normal[0];
-                dfdx[4] = normal[1];
-                dfdx[5] = normal[2];
+                dfdx[3] = keyframe_normal[0];
+                dfdx[4] = keyframe_normal[1];
+                dfdx[5] = keyframe_normal[2];
               }
             }
           }
@@ -148,6 +152,7 @@ void DepthTracker::ComputeResidual(const Frame& frame)
   const float* frame_depths = frame.depth_image->GetData();
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
   const Transform Tmc = keyframe_->Tcw * frame.Tcw.Inverse();
@@ -159,8 +164,8 @@ void DepthTracker::ComputeResidual(const Frame& frame)
 
   CUDA_LAUNCH(ComputeResidualKernel, blocks, threads, 0, 0, Tmc,
       keyframe_depths, keyframe_normals, keyframe_projection, keyframe_width,
-      keyframe_height, frame_depths, frame_projection, frame_width,
-      frame_height, residuals);
+      keyframe_height, frame_depths, frame_normals, frame_projection,
+      frame_width, frame_height, residuals);
 }
 
 void DepthTracker::ComputeJacobian(const Frame& frame)
@@ -172,6 +177,7 @@ void DepthTracker::ComputeJacobian(const Frame& frame)
   const float* frame_depths = frame.depth_image->GetData();
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
   const Transform Tmc = keyframe_->Tcw * frame.Tcw.Inverse();
@@ -185,15 +191,15 @@ void DepthTracker::ComputeJacobian(const Frame& frame)
   {
     CUDA_LAUNCH(ComputeJacobianKernel<true>, blocks, threads, 0, 0, Tmc,
         keyframe_depths, keyframe_normals, keyframe_projection, keyframe_width,
-        keyframe_height, frame_depths, frame_projection, frame_width,
-        frame_height, jacobian);
+        keyframe_height, frame_depths, frame_normals, frame_projection,
+        frame_width, frame_height, jacobian);
   }
   else
   {
     CUDA_LAUNCH(ComputeJacobianKernel<false>, blocks, threads, 0, 0, Tmc,
         keyframe_depths, keyframe_normals, keyframe_projection, keyframe_width,
-        keyframe_height, frame_depths, frame_projection, frame_width,
-        frame_height, jacobian);
+        keyframe_height, frame_depths, frame_normals, frame_projection,
+        frame_width, frame_height, jacobian);
   }
 }
 
