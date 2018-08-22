@@ -117,11 +117,15 @@ void Tracker::ValidateKeyframe() const
 void Tracker::ValidateFrame(const Frame& frame) const
 {
   VULCAN_DEBUG_MSG(frame.depth_image, "frame missing depth image");
+  VULCAN_DEBUG_MSG(frame.normal_image, "frame missing normal image");
 
-  const int w = frame.depth_image->GetWidth();
-  const int h = frame.depth_image->GetHeight();
+  const int dw = frame.depth_image->GetWidth();
+  const int dh = frame.depth_image->GetHeight();
+  const int nw = frame.normal_image->GetWidth();
+  const int nh = frame.normal_image->GetHeight();
 
-  VULCAN_DEBUG_MSG(w > 0 && h > 0, "invalid frame depth image size");
+  VULCAN_DEBUG_MSG(dw > 0 && dh > 0, "invalid frame depth image size");
+  VULCAN_DEBUG_MSG(dw == nw && dh == nh, "frame image size mismatch");
 }
 
 void Tracker::CreateState(const Frame& frame)

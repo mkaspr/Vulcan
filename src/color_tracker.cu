@@ -113,10 +113,12 @@ float Sample(int w, int h, const float* values, float u, float v)
 
 VULCAN_GLOBAL
 void ComputeResidualKernel(const Transform Tcm, const float* keyframe_depths,
-    const float* keyframe_intensities, const Projection keyframe_projection,
-    int keyframe_width, int keyframe_height, const float* frame_depths,
-    const float* frame_intensities, const Projection frame_projection,
-    int frame_width, int frame_height, double* residuals)
+    const Vector3f* keyframe_normals, const float* keyframe_intensities,
+    const Projection keyframe_projection, int keyframe_width,
+    int keyframe_height, const float* frame_depths,
+    const Vector3f* frame_normals, const float* frame_intensities,
+    const Projection frame_projection, int frame_width, int frame_height,
+    double* residuals)
 {
   const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -145,12 +147,19 @@ void ComputeResidualKernel(const Transform Tcm, const float* keyframe_depths,
 
         if (fabsf(frame_depth - Xcp[2]) < 0.01)
         {
-          const float Im = keyframe_intensities[keyframe_index];
+          // const Vector3f frame_normal = frame_normals[frame_index];
+          // const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
 
-          const float Ic = Sample(frame_width, frame_height, frame_intensities,
-              frame_uv[0], frame_uv[1]);
+          // if (keyframe_normal.SquaredNorm() > 0 &&
+          //     frame_normal.Dot(keyframe_normal) > 0.5f)
+          {
+            const float Im = keyframe_intensities[keyframe_index];
 
-          residual = Ic - Im;
+            const float Ic = Sample(frame_width, frame_height,
+                frame_intensities, frame_uv[0], frame_uv[1]);
+
+            residual = Ic - Im;
+          }
         }
       }
     }
@@ -162,11 +171,11 @@ void ComputeResidualKernel(const Transform Tcm, const float* keyframe_depths,
 template <bool translation_enabled>
 VULCAN_GLOBAL
 void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
-    const Projection keyframe_projection, int keyframe_width,
-    int keyframe_height, const float* frame_depths,
-    const float* frame_gradient_x, const float* frame_gradient_y,
-    const Projection frame_projection, int frame_width, int frame_height,
-    double* jacobian)
+    const Vector3f* keyframe_normals, const Projection keyframe_projection,
+    int keyframe_width, int keyframe_height, const float* frame_depths,
+    const Vector3f* frame_normals, const float* frame_gradient_x,
+    const float* frame_gradient_y, const Projection frame_projection,
+    int frame_width, int frame_height, double* jacobian)
 {
   const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -195,28 +204,35 @@ void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
 
         if (fabsf(frame_depth - Xcp[2]) < 0.01)
         {
-          const float x = Xmp[0];
-          const float y = Xmp[1];
-          const float z = Xmp[2];
+          // const Vector3f frame_normal = frame_normals[frame_index];
+          // const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
 
-          const float fx = frame_projection.GetFocalLength()[0];
-          const float fy = frame_projection.GetFocalLength()[1];
-
-          const float gx = Sample(frame_width, frame_height, frame_gradient_x,
-              frame_uv[0], frame_uv[1]);
-
-          const float gy = Sample(frame_width, frame_height, frame_gradient_y,
-              frame_uv[0], frame_uv[1]);
-
-          dfdx[0] = -fy*gy-y*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
-          dfdx[1] = fx*gx+x*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
-          dfdx[2] = (fy*gy*x)/z-(fx*gx*y)/z;
-
-          if (translation_enabled)
+          // if (keyframe_normal.SquaredNorm() > 0 &&
+          //     frame_normal.Dot(keyframe_normal) > 0.5f)
           {
-            dfdx[3] = (fx*gx)/z;
-            dfdx[4] = (fy*gy)/z;
-            dfdx[5] = -fx*gx*x*1.0/(z*z)-fy*gy*y*1.0/(z*z);
+            const float x = Xmp[0];
+            const float y = Xmp[1];
+            const float z = Xmp[2];
+
+            const float fx = frame_projection.GetFocalLength()[0];
+            const float fy = frame_projection.GetFocalLength()[1];
+
+            const float gx = Sample(frame_width, frame_height, frame_gradient_x,
+                frame_uv[0], frame_uv[1]);
+
+            const float gy = Sample(frame_width, frame_height, frame_gradient_y,
+                frame_uv[0], frame_uv[1]);
+
+            dfdx[0] = -fy*gy-y*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
+            dfdx[1] = fx*gx+x*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
+            dfdx[2] = (fy*gy*x)/z-(fx*gx*y)/z;
+
+            if (translation_enabled)
+            {
+              dfdx[3] = (fx*gx)/z;
+              dfdx[4] = (fy*gy)/z;
+              dfdx[5] = -fx*gx*x*1.0/(z*z)-fy*gy*y*1.0/(z*z);
+            }
           }
         }
       }
@@ -301,6 +317,8 @@ void ColorTracker::ComputeResidual(const Frame& frame)
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const float* keyframe_intensities = keyframe_intensities_.GetData();
   const float* frame_intensities = frame_intensities_.GetData();
+  const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
   const Transform Tcm = frame.Tcw * keyframe_->Tcw.Inverse();
@@ -311,9 +329,10 @@ void ColorTracker::ComputeResidual(const Frame& frame)
   const dim3 blocks = GetKernelBlocks(total, threads);
 
   CUDA_LAUNCH(ComputeResidualKernel, blocks, threads, 0, 0, Tcm,
-      keyframe_depths, keyframe_intensities, keyframe_projection,
-      keyframe_width, keyframe_height, frame_depths, frame_intensities,
-      frame_projection, frame_width, frame_height, residuals);
+      keyframe_depths, keyframe_normals, keyframe_intensities,
+      keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+      frame_normals, frame_intensities, frame_projection, frame_width,
+      frame_height, residuals);
 }
 
 void ColorTracker::ComputeJacobian(const Frame& frame)
@@ -326,6 +345,8 @@ void ColorTracker::ComputeJacobian(const Frame& frame)
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const float* frame_gradient_x = frame_gradient_x_.GetData();
   const float* frame_gradient_y = frame_gradient_y_.GetData();
+  const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
   const Transform Tcm = frame.Tcw * keyframe_->Tcw.Inverse();
@@ -338,16 +359,18 @@ void ColorTracker::ComputeJacobian(const Frame& frame)
   if (translation_enabled_)
   {
     CUDA_LAUNCH(ComputeJacobianKernel<true>, blocks, threads, 0, 0, Tcm,
-        keyframe_depths, keyframe_projection, keyframe_width,
-        keyframe_height, frame_depths, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, jacobian);
+        keyframe_depths, keyframe_normals, keyframe_projection, keyframe_width,
+        keyframe_height, frame_depths, frame_normals, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height,
+        jacobian);
   }
   else
   {
     CUDA_LAUNCH(ComputeJacobianKernel<false>, blocks, threads, 0, 0, Tcm,
-        keyframe_depths, keyframe_projection, keyframe_width,
-        keyframe_height, frame_depths, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, jacobian);
+        keyframe_depths, keyframe_normals, keyframe_projection, keyframe_width,
+        keyframe_height, frame_depths, frame_normals, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height,
+        jacobian);
   }
 }
 
