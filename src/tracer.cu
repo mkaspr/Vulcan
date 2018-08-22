@@ -57,19 +57,18 @@ void ComputePatchesKernel(const int* indices, const HashEntry* entries,
           bmax[1] = clamp<short>(max((short)ceilf(uv[1]), bmax[1]), 0, bounds_height - 1);
 
           // TODO: expose parameters
-          depth_bounds[0] = clamp<float>(min(Xcp[2], depth_bounds[0]), 0.1f, 5.0f);
-          depth_bounds[1] = clamp<float>(max(Xcp[2], depth_bounds[1]), 0.1f, 5.0f);
+          depth_bounds[0] = clamp(min(Xcp[2], depth_bounds[0]), 0.1f, 5.0f);
+          depth_bounds[1] = clamp(max(Xcp[2], depth_bounds[1]), 0.1f, 5.0f);
         }
       }
     }
   }
 
-  const int rx = max(0, bmax[0] - bmin[0]);
-  const int ry = max(0, bmax[1] - bmin[1]);
+  const int rx = bmax[0] - bmin[0];
+  const int ry = bmax[1] - bmin[1];
   const int gx = (rx + patch_size - 1) / patch_size;
   const int gy = (ry + patch_size - 1) / patch_size;
   const int count = (depth_bounds[1] > depth_bounds[0]) ? gx * gy : 0;
-
   const int offset = PrefixSum<BLOCK_SIZE>(count, threadIdx.x, *patch_count);
 
   for (int i = 0; i < gy; ++i)
@@ -363,7 +362,7 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
     if (bound[0] < bound[1])
     {
       const Vector2f uv(x + 0.5f, y + 0.5f);
-      const Vector3f Xcp = projection.Unproject(uv) * bound[0];
+      const Vector3f Xcp = projection.Unproject(uv, bound[0]);
       const Vector3f Xwp = Vector3f(Twc * Vector4f(Xcp, 1.0f));
       const Vector3f dir = Vector3f(Twc * Vector4f(Xcp, 0.0f)).Normalized();
 
@@ -379,7 +378,6 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
 
       depth = bound[0];
       color = Vector3f(0, 0, 0);
-
       int iters = 0;
 
       do
@@ -446,7 +444,6 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
 
             const Vector3f Xcd = Vector3f(Tcw * Vector4f(p, 1.0f));
             final_depth = Xcd[2];
-
             break;
           }
           else

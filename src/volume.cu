@@ -23,9 +23,9 @@ VULCAN_DEVICE int excess_pointer;
 template <int BLOCK_SIZE>
 VULCAN_GLOBAL
 void UpdateBlockVisibilityKernel(const HashEntry* hash_entries,
-    const Visibility* block_visibility, int* visible_blocks,
-    float block_length, int image_width, int image_height,
-    const Projection projection, const Transform Tcw, int count)
+    Visibility* block_visibility, int* visible_blocks, float block_length,
+    int image_width, int image_height, const Projection projection,
+    const Transform Tcw, int count)
 {
   bool visible = false;
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -49,9 +49,9 @@ void UpdateBlockVisibilityKernel(const HashEntry* hash_entries,
       for (int i = 0; i < 8; ++i)
       {
         // compute position of corner in world frame
-        Xwp[0] = origin[0] + block_length * ((i & 0b001) >> 0);
-        Xwp[1] = origin[1] + block_length * ((i & 0b010) >> 1);
-        Xwp[2] = origin[2] + block_length * ((i & 0b100) >> 2);
+        Xwp[0] = block_length * (origin[0] + ((i & 0b001) >> 0));
+        Xwp[1] = block_length * (origin[1] + ((i & 0b010) >> 1));
+        Xwp[2] = block_length * (origin[2] + ((i & 0b100) >> 2));
 
         // converte point to camera frame
         const Vector4f Xcp = Tcw * Xwp;
@@ -70,6 +70,9 @@ void UpdateBlockVisibilityKernel(const HashEntry* hash_entries,
           break;
         }
       }
+
+      // update unknown visibility status only if not visible
+      if (!visible) block_visibility[index] = VISIBILITY_FALSE;
     }
   }
 
@@ -452,7 +455,7 @@ void Volume::ResetBlockVisibility()
 void Volume::UpdateBlockVisibility(const Frame& frame)
 {
   const HashEntry* hash_entries = hash_entries_.GetData();
-  const Visibility* block_visibility = block_visibility_.GetData();
+  Visibility* block_visibility = block_visibility_.GetData();
   int* visible_blocks = visible_blocks_.GetData();
   const Projection& projection = frame.projection;
   const Transform& Tcw = frame.Tcw;

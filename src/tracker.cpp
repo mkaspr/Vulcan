@@ -179,12 +179,7 @@ void Tracker::ComputeUpdate(Frame& frame)
 
   update = -solver.solve(gradient);
   frame.Tcw = exp(update).Inverse() * frame.Tcw;
-
-  // TODO: verifiy proper use
-  if (update.norm() < 1E-4)
-  {
-    iteration_ = max_iterations_;
-  }
+  if (update.norm() < 1E-5) iteration_ = max_iterations_;
 }
 
 void Tracker::UpdateState(const Frame& frame)

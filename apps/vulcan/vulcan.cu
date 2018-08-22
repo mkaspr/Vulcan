@@ -32,6 +32,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Creating integrator...";
 
   Integrator integrator(volume);
+  integrator.SetMaxWeight(200);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -57,8 +58,8 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Integrating frames...";
 
-  const int frame_start = 2;
-  const int frame_stop  = 500;
+  const int frame_start = 10;
+  const int frame_stop  = 800;
   const clock_t start = clock();
   bool first_frame = true;
 
@@ -75,8 +76,10 @@ int main(int argc, char** argv)
     {
       std::stringstream buffer;
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
-      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
+      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
       VULCAN_ASSERT(depth_image->GetHeight() == h);
@@ -86,8 +89,10 @@ int main(int argc, char** argv)
     {
       std::stringstream buffer;
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
-      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
-      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
+      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);
       VULCAN_ASSERT(color_image->GetHeight() == h);
