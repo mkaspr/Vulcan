@@ -107,6 +107,7 @@ set(CUDA_SOURCES
   ${CUDA_SOURCE_DIR}/detector.cu
   ${CUDA_SOURCE_DIR}/extractor.cu
   ${CUDA_SOURCE_DIR}/frame.cu
+  ${CUDA_SOURCE_DIR}/image.cu
   ${CUDA_SOURCE_DIR}/integrator.cu
   ${CUDA_SOURCE_DIR}/sampler.cu
   ${CUDA_SOURCE_DIR}/tracer.cu

@@ -109,6 +109,9 @@ class Image
       return data_;
     }
 
+    VULCAN_HOST
+    void Downsample(Image& image, bool nearest) const;
+
   protected:
 
     Vector2i size_;
@@ -217,6 +220,9 @@ class ColorImage
     {
       return data_;
     }
+
+    VULCAN_HOST
+    void Downsample(ColorImage& image, bool nearest) const;
 
   protected:
 
