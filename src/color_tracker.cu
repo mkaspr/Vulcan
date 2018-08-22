@@ -147,11 +147,11 @@ void ComputeResidualKernel(const Transform Tcm, const float* keyframe_depths,
 
         if (fabsf(frame_depth - Xcp[2]) < 0.01)
         {
-          // const Vector3f frame_normal = frame_normals[frame_index];
-          // const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
+          const Vector3f frame_normal = frame_normals[frame_index];
+          const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
 
-          // if (keyframe_normal.SquaredNorm() > 0 &&
-          //     frame_normal.Dot(keyframe_normal) > 0.5f)
+          if (keyframe_normal.SquaredNorm() > 0 &&
+              frame_normal.Dot(keyframe_normal) > 0.5f)
           {
             const float Im = keyframe_intensities[keyframe_index];
 
@@ -204,11 +204,11 @@ void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
 
         if (fabsf(frame_depth - Xcp[2]) < 0.01)
         {
-          // const Vector3f frame_normal = frame_normals[frame_index];
-          // const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
+          const Vector3f frame_normal = frame_normals[frame_index];
+          const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
 
-          // if (keyframe_normal.SquaredNorm() > 0 &&
-          //     frame_normal.Dot(keyframe_normal) > 0.5f)
+          if (keyframe_normal.SquaredNorm() > 0 &&
+              frame_normal.Dot(keyframe_normal) > 0.5f)
           {
             const float x = Xmp[0];
             const float y = Xmp[1];
