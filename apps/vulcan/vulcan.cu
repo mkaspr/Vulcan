@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  ColorTracker tracker;
+  PyramidTracker<DepthTracker> tracker;
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -74,8 +74,8 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
@@ -85,8 +85,8 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);
@@ -111,7 +111,6 @@ int main(int argc, char** argv)
       LOG(INFO) << "Tracking frame " << i << "...";
       frame.Tcw = trace_frame->Tcw;
       tracker.SetKeyframe(trace_frame);
-      tracker.SetTranslationEnabled(true);
       tracker.Track(frame);
 
       LOG(INFO) << "Current pose:" << std::endl << frame.Tcw.GetMatrix() << std::endl;

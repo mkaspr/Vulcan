@@ -27,6 +27,8 @@ struct Frame
   std::shared_ptr<ColorImage> normal_image;
 
   void ComputeNormals();
+
+  void Downsample(Frame& frame);
 };
 
 } // namespace vulcan

@@ -74,6 +74,17 @@ void Tracker::SetTranslationEnabled(bool enabled)
   translation_enabled_ = enabled;
 }
 
+int Tracker::GetMaxIterations() const
+{
+  return max_iterations_;
+}
+
+void Tracker::SetMaxIterations(int iterations)
+{
+  VULCAN_DEBUG(iterations > 0);
+  max_iterations_ = iterations;
+}
+
 void Tracker::Track(Frame& frame)
 {
   BeginSolve(frame);

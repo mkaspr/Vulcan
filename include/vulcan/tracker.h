@@ -26,6 +26,10 @@ class Tracker
 
     void SetTranslationEnabled(bool enabled);
 
+    int GetMaxIterations() const;
+
+    void SetMaxIterations(int iterations);
+
     void Track(Frame& frame);
 
   protected:

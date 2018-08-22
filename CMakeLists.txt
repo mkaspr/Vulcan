@@ -63,6 +63,7 @@ set(CPP_HEADERS
   ${CPP_HEADER_DIR}/matrix.h
   ${CPP_HEADER_DIR}/mesh.h
   ${CPP_HEADER_DIR}/projection.h
+  ${CPP_HEADER_DIR}/pyramid_tracker.h
   ${CPP_HEADER_DIR}/sampler.h
   ${CPP_HEADER_DIR}/tracer.h
   ${CPP_HEADER_DIR}/tracker.h
@@ -83,6 +84,7 @@ set(CPP_SOURCES
   ${CPP_SOURCE_DIR}/exporter.cpp
   ${CPP_SOURCE_DIR}/frame.cpp
   ${CPP_SOURCE_DIR}/mesh.cpp
+  ${CPP_SOURCE_DIR}/pyramid_tracker.cpp
   ${CPP_SOURCE_DIR}/tracer.cpp
   ${CPP_SOURCE_DIR}/tracker.cpp
 )

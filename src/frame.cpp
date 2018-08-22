@@ -22,4 +22,23 @@ void Frame::ComputeNormals()
   vulcan::ComputeNormals(depths, projection, normals, w, h);
 }
 
+void Frame::Downsample(Frame& frame)
+{
+  VULCAN_DEBUG(depth_image);
+  VULCAN_DEBUG(color_image);
+  VULCAN_DEBUG(normal_image);
+
+  if (!frame.depth_image) frame.depth_image = std::make_shared<Image>();
+  if (!frame.color_image) frame.color_image = std::make_shared<ColorImage>();
+  if (!frame.normal_image) frame.normal_image = std::make_shared<ColorImage>();
+
+  depth_image->Downsample(*frame.depth_image, true);
+  color_image->Downsample(*frame.color_image, false);
+  normal_image->Downsample(*frame.normal_image, true);
+
+  frame.projection.SetFocalLength(projection.GetFocalLength() / 2);
+  frame.projection.SetCenterPoint(projection.GetCenterPoint() / 2);
+  frame.Tcw = Tcw;
+}
+
 } // namespace vulcan
