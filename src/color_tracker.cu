@@ -118,14 +118,14 @@ void ComputeResidualKernel(const Transform Tcm, const float* keyframe_depths,
     int keyframe_height, const float* frame_depths,
     const Vector3f* frame_normals, const float* frame_intensities,
     const Projection frame_projection, int frame_width, int frame_height,
-    double* residuals)
+    float* residuals)
 {
   const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
 
   if (keyframe_x < keyframe_width && keyframe_y < keyframe_height)
   {
-    double residual = 0;
+    float residual = 0;
     const int keyframe_index = keyframe_y * keyframe_width + keyframe_x;
     const float keyframe_depth = keyframe_depths[keyframe_index];
 
@@ -175,7 +175,7 @@ void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
     int keyframe_width, int keyframe_height, const float* frame_depths,
     const Vector3f* frame_normals, const float* frame_gradient_x,
     const float* frame_gradient_y, const Projection frame_projection,
-    int frame_width, int frame_height, double* jacobian)
+    int frame_width, int frame_height, float* jacobian)
 {
   const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -322,7 +322,7 @@ void ColorTracker::ComputeResidual(const Frame& frame)
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
   const Transform Tcm = frame.Tcw * keyframe_->Tcw.Inverse();
-  double* residuals = residuals_.GetData();
+  float* residuals = residuals_.GetData();
 
   const dim3 threads(16, 16);
   const dim3 total(keyframe_width, keyframe_height);
@@ -350,7 +350,7 @@ void ColorTracker::ComputeJacobian(const Frame& frame)
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
   const Transform Tcm = frame.Tcw * keyframe_->Tcw.Inverse();
-  double* jacobian = jacobian_.GetData();
+  float* jacobian = jacobian_.GetData();
 
   const dim3 threads(16, 16);
   const dim3 total(keyframe_width, keyframe_height);

@@ -90,13 +90,13 @@ class Tracker
 
     std::shared_ptr<const Frame> keyframe_;
 
-    Buffer<double> residuals_;
+    Buffer<float> residuals_;
 
-    Buffer<double> jacobian_;
+    Buffer<float> jacobian_;
 
-    Buffer<double> hessian_;
+    Buffer<float> hessian_;
 
-    Buffer<double> gradient_;
+    Buffer<float> gradient_;
 
     cublasHandle_t handle_;
 };

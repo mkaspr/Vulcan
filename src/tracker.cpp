@@ -7,29 +7,29 @@
 namespace vulcan
 {
 
-inline Transform exp(const Eigen::VectorXd& omega)
+inline Transform exp(const Eigen::VectorXf& omega)
 {
-  const double theta_sq = omega.head<3>().squaredNorm();
-  const double theta = sqrt(theta_sq);
-  const double half_theta = 0.5 * theta;
+  const float theta_sq = omega.head<3>().squaredNorm();
+  const float theta = sqrt(theta_sq);
+  const float half_theta = 0.5 * theta;
 
-  double imag_factor;
-  double real_factor;
+  float imag_factor;
+  float real_factor;
 
   if(theta < 1E-10)
   {
-    const double theta_po4 = theta_sq * theta_sq;
+    const float theta_po4 = theta_sq * theta_sq;
     imag_factor = 0.5 - (1.0 / 48.0) * theta_sq + (1.0 / 3840.0) * theta_po4;
     real_factor = 1 - 0.5 * theta_sq + (1.0 / 384.0) * theta_po4;
   }
   else
   {
-    const double sin_half_theta = sin(half_theta);
+    const float sin_half_theta = sin(half_theta);
     imag_factor = sin_half_theta / theta;
     real_factor = cos(half_theta);
   }
 
-  Eigen::Vector3d xxx;
+  Eigen::Vector3f xxx;
   xxx[0] = imag_factor * omega[0];
   xxx[1] = imag_factor * omega[1];
   xxx[2] = imag_factor * omega[2];
@@ -162,10 +162,10 @@ void Tracker::ComputeOperands(const Frame& frame)
 void Tracker::ComputeUpdate(Frame& frame)
 {
   const int parameter_count = GetParameterCount();
-  Eigen::LDLT<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>> solver;
-  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> hessian;
-  Eigen::Matrix<double, Eigen::Dynamic, 1> gradient;
-  Eigen::Matrix<double, Eigen::Dynamic, 1> update;
+  Eigen::LDLT<Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic>> solver;
+  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> hessian;
+  Eigen::Matrix<float, Eigen::Dynamic, 1> gradient;
+  Eigen::Matrix<float, Eigen::Dynamic, 1> update;
 
   hessian.resize(parameter_count, parameter_count);
   gradient.resize(parameter_count);

@@ -32,7 +32,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Creating integrator...";
 
   Integrator integrator(volume);
-  integrator.SetMaxWeight(200);
+  integrator.SetMaxWeight(8);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -59,7 +59,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 10;
-  const int frame_stop  = 800;
+  const int frame_stop  = 200;
   const clock_t start = clock();
   bool first_frame = true;
 
@@ -76,10 +76,10 @@ int main(int argc, char** argv)
     {
       std::stringstream buffer;
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
       VULCAN_ASSERT(depth_image->GetHeight() == h);
@@ -89,10 +89,10 @@ int main(int argc, char** argv)
     {
       std::stringstream buffer;
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);
       VULCAN_ASSERT(color_image->GetHeight() == h);
@@ -131,43 +131,43 @@ int main(int argc, char** argv)
     trace_frame->Tcw = frame.Tcw;
     tracer.Trace(*trace_frame);
 
-    {
-      LOG(INFO) << "Writing depth image...";
-      std::stringstream buffer;
-      buffer << "depth_" << std::setw(4) << std::setfill('0') << fid << ".png";
-      std::shared_ptr<Image> dimage = trace_frame->depth_image;
-      thrust::device_ptr<float> d_data(dimage->GetData());
-      thrust::host_vector<float> data(d_data, d_data + dimage->GetTotal());
-      cv::Mat image(h, w, CV_32FC1, data.data());
-      image.convertTo(image, CV_16UC1, 1000);
-      cv::imwrite(buffer.str(), image);
-    }
+    // {
+    //   LOG(INFO) << "Writing depth image...";
+    //   std::stringstream buffer;
+    //   buffer << "depth_" << std::setw(4) << std::setfill('0') << fid << ".png";
+    //   std::shared_ptr<Image> dimage = trace_frame->depth_image;
+    //   thrust::device_ptr<float> d_data(dimage->GetData());
+    //   thrust::host_vector<float> data(d_data, d_data + dimage->GetTotal());
+    //   cv::Mat image(h, w, CV_32FC1, data.data());
+    //   image.convertTo(image, CV_16UC1, 1000);
+    //   cv::imwrite(buffer.str(), image);
+    // }
 
-    {
-      LOG(INFO) << "Writing color image...";
-      std::stringstream buffer;
-      buffer << "color_" << std::setw(4) << std::setfill('0') << fid << ".png";
-      std::shared_ptr<ColorImage> cimage = trace_frame->color_image;
-      thrust::device_ptr<Vector3f> d_data(cimage->GetData());
-      thrust::host_vector<Vector3f> data(d_data, d_data + cimage->GetTotal());
-      cv::Mat image(h, w, CV_32FC3, data.data());
-      image.convertTo(image, CV_8UC3, 255);
-      cv::cvtColor(image, image, CV_BGR2RGB);
-      cv::imwrite(buffer.str(), image);
-    }
+    // {
+    //   LOG(INFO) << "Writing color image...";
+    //   std::stringstream buffer;
+    //   buffer << "color_" << std::setw(4) << std::setfill('0') << fid << ".png";
+    //   std::shared_ptr<ColorImage> cimage = trace_frame->color_image;
+    //   thrust::device_ptr<Vector3f> d_data(cimage->GetData());
+    //   thrust::host_vector<Vector3f> data(d_data, d_data + cimage->GetTotal());
+    //   cv::Mat image(h, w, CV_32FC3, data.data());
+    //   image.convertTo(image, CV_8UC3, 255);
+    //   cv::cvtColor(image, image, CV_BGR2RGB);
+    //   cv::imwrite(buffer.str(), image);
+    // }
 
-    {
-      LOG(INFO) << "Writing normal image...";
-      std::stringstream buffer;
-      buffer << "normal_" << std::setw(4) << std::setfill('0') << fid << ".png";
-      std::shared_ptr<ColorImage> nimage = trace_frame->normal_image;
-      thrust::device_ptr<Vector3f> d_data(nimage->GetData());
-      thrust::host_vector<Vector3f> data(d_data, d_data + nimage->GetTotal());
-      cv::Mat image(h, w, CV_32FC3, data.data());
-      image.convertTo(image, CV_8UC3, 127.5, 127.5);
-      cv::cvtColor(image, image, CV_BGR2RGB);
-      cv::imwrite(buffer.str(), image);
-    }
+    // {
+    //   LOG(INFO) << "Writing normal image...";
+    //   std::stringstream buffer;
+    //   buffer << "normal_" << std::setw(4) << std::setfill('0') << fid << ".png";
+    //   std::shared_ptr<ColorImage> nimage = trace_frame->normal_image;
+    //   thrust::device_ptr<Vector3f> d_data(nimage->GetData());
+    //   thrust::host_vector<Vector3f> data(d_data, d_data + nimage->GetTotal());
+    //   cv::Mat image(h, w, CV_32FC3, data.data());
+    //   image.convertTo(image, CV_8UC3, 127.5, 127.5);
+    //   cv::cvtColor(image, image, CV_BGR2RGB);
+    //   cv::imwrite(buffer.str(), image);
+    // }
   }
 
   CUDA_ASSERT(cudaDeviceSynchronize());
