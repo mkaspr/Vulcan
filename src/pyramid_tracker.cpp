@@ -45,18 +45,18 @@ void PyramidTracker<Tracker>::Track(Frame& frame)
   frame.Downsample(*half_keyframe_);
   half_keyframe_->Downsample(*quarter_keyframe_);
 
-  tracker_->SetMaxIterations(20);
+  tracker_->SetMaxIterations(3);
   tracker_->SetTranslationEnabled(false);
   tracker_->SetKeyframe(quarter_keyframe_);
   tracker_->Track(quarter_frame);
 
-  tracker_->SetMaxIterations(20);
+  tracker_->SetMaxIterations(5);
   tracker_->SetTranslationEnabled(true);
   half_frame.Tcw = quarter_frame.Tcw;
   tracker_->SetKeyframe(half_keyframe_);
   tracker_->Track(half_frame);
 
-  tracker_->SetMaxIterations(20);
+  tracker_->SetMaxIterations(7);
   tracker_->SetTranslationEnabled(true);
   frame.Tcw = half_frame.Tcw;
   tracker_->SetKeyframe(keyframe_);
