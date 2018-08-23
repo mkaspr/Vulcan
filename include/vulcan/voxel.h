@@ -19,7 +19,7 @@ class Voxel
     inline Vector3f GetColor() const
     {
       Vector3f result;
-      const float scale = 1.0f / 32768.0f;
+      const float scale = 1.0f / 32767.0f;
       result[0] = scale * color[0];
       result[1] = scale * color[1];
       result[2] = scale * color[2];
@@ -29,9 +29,9 @@ class Voxel
     VULCAN_HOST_DEVICE
     inline void SetColor(const Vector3f& c)
     {
-      color[0] = 32768 * c[0];
-      color[1] = 32768 * c[1];
-      color[2] = 32768 * c[2];
+      color[0] = 32767 * c[0];
+      color[1] = 32767 * c[1];
+      color[2] = 32767 * c[2];
     }
 
     VULCAN_HOST_DEVICE

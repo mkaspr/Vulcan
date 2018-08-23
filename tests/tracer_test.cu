@@ -30,6 +30,8 @@ TEST(Tracer, ComputePatches)
   const int image_height = 480;
   const int bounds_width = 80;
   const int bounds_height = 60;
+  const float trunc_length = 0.04;
+  const float inv_trunc_length = 1.0f / trunc_length;
 
   const Transform Tcw =
       Transform::Translate(0.3f, -1.3f, 3.7f) *
@@ -91,8 +93,9 @@ TEST(Tracer, ComputePatches)
           bmax[0] = clamp(max((int)ceilf(u), bmax[0]), 0, bounds_width - 1);
           bmax[1] = clamp(max((int)ceilf(v), bmax[1]), 0, bounds_height - 1);
 
-          drng[0] = min(Xcp[2], drng[0]);
-          drng[1] = max(Xcp[2], drng[1]);
+          const float depth = Xcp[2] * inv_trunc_length;
+          drng[0] = min(depth, drng[0]);
+          drng[1] = max(depth, drng[1]);
         }
       }
     }
@@ -130,8 +133,8 @@ TEST(Tracer, ComputePatches)
   int* p_found_count = d_found_count.data().get();
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      block_count, image_width, image_height, bounds_width, bounds_height,
-      p_found_patches, p_found_count);
+      inv_trunc_length, block_count, image_width, image_height, bounds_width,
+      bounds_height, p_found_patches, p_found_count);
 
   thrust::host_vector<Patch> found_patches(d_found_patches);
   ASSERT_EQ(expected_patches.size(), d_found_count[0]);
@@ -249,6 +252,7 @@ TEST(Tracer, ComputePoints)
   const float trunc_length = 0.04;
   const float voxel_length = 0.008;
   const float block_length = voxel_length * Block::resolution;
+  const float inv_trunc_length = 1.0f / trunc_length;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(4096, 2048);
@@ -319,8 +323,8 @@ TEST(Tracer, ComputePoints)
   d_patch_count[0] = 0;
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      visible_count, image_width, image_height, bounds_width, bounds_height,
-      p_patches, p_patch_count);
+      inv_trunc_length, visible_count, image_width, image_height, bounds_width,
+      bounds_height, p_patches, p_patch_count);
 
   const int patch_count = d_patch_count[0];
 
@@ -369,17 +373,18 @@ TEST(Tracer, ComputePoints)
     const int x = i % image_width;
     const int y = i / image_width;
 
-    if (x <= 2 || x >= image_width  - 2 ||
-        y <= 2 || y >= image_height - 2)
+    if (x <= 5 || x >= image_width  - 5 ||
+        y <= 5 || y >= image_height - 5)
     {
       continue;
     }
 
     const Vector3f& found = found_colors[i];
     const Vector3f& expected = expected_colors[i];
-    ASSERT_NEAR(expected[0], found[0], 0.01);
-    ASSERT_NEAR(expected[1], found[1], 0.01);
-    ASSERT_NEAR(expected[2], found[2], 0.01);
+
+    ASSERT_NEAR(expected[0], found[0], 0.001);
+    ASSERT_NEAR(expected[1], found[1], 0.001);
+    ASSERT_NEAR(expected[2], found[2], 0.001);
   }
 }
 
@@ -392,6 +397,7 @@ TEST(Tracer, ComputeNormals)
   const float trunc_length = 0.04;
   const float voxel_length = 0.008;
   const float block_length = voxel_length * Block::resolution;
+  const float inv_trunc_length = 1.0f / trunc_length;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(2 * 4096, 2 * 2048);
@@ -442,7 +448,7 @@ TEST(Tracer, ComputeNormals)
       {
         const int pixel = y * image_width + x;
         const float z = std::sqrt(200 * 200 - rr);
-        expected_depths[pixel] = 4.0 - 2.0 * (z / 200);
+        expected_depths[pixel] = 4.0 - 1.5 * (z / 200);
         expected_colors[pixel] = Vector3f(0, (x % 40 < 20) ^ (y % 40 < 20), 1);
 
         // TODO: compute normal
@@ -498,57 +504,44 @@ TEST(Tracer, ComputeNormals)
   d_patch_count[0] = 0;
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      visible_count, image_width, image_height, bounds_width, bounds_height,
-      p_patches, p_patch_count);
+      inv_trunc_length, visible_count, image_width, image_height, bounds_width,
+      bounds_height, p_patches, p_patch_count);
 
   const int patch_count = d_patch_count[0];
 
   vulcan::ResetBoundsBuffer(p_bounds, d_bounds.size());
   vulcan::ComputeBounds(p_patches, p_bounds, bounds_width, patch_count);
 
-  const int iters = 1;
-  const clock_t start = clock();
-
-  for (int i = 0; i < iters; ++i)
-  {
-    vulcan::ComputePoints(p_entries, p_voxels, p_bounds, block_count,
-        block_length, voxel_length, trunc_length, Twc, projection, p_found_depths,
-        p_found_colors, image_width, image_height, bounds_width, bounds_height);
-
-    cudaDeviceSynchronize();
-  }
+  vulcan::ComputePoints(p_entries, p_voxels, p_bounds, block_count,
+      block_length, voxel_length, trunc_length, Twc, projection, p_found_depths,
+      p_found_colors, image_width, image_height, bounds_width, bounds_height);
 
   vulcan::ComputeNormals(p_found_depths, projection, p_found_normals,
       image_width, image_height);
-
-  const clock_t stop = clock();
-  const double time = double(stop - start) / CLOCKS_PER_SEC;
-  std::cout << "Time Per Iter: " << (time / iters) << std::endl;
-  std::cout << "FPS: " << 1 / (time / iters) << std::endl;
 
   thrust::host_vector<float> found_depths(d_found_depths);
   thrust::host_vector<Vector3f> found_colors(d_found_colors);
   thrust::host_vector<Vector3f> found_normals(d_found_normals);
 
-  // {
-  //   cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
-  //   image.convertTo(image, CV_16UC1, 10000);
-  //   cv::imwrite("depth.png", image);
-  // }
+  {
+    cv::Mat image(image_height, image_width, CV_32FC1, found_depths.data());
+    image.convertTo(image, CV_16UC1, 10000);
+    cv::imwrite("depth.png", image);
+  }
 
-  // {
-  //   cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
-  //   image.convertTo(image, CV_8UC3, 255);
-  //   cv::cvtColor(image, image, CV_BGR2RGB);
-  //   cv::imwrite("color.png", image);
-  // }
+  {
+    cv::Mat image(image_height, image_width, CV_32FC3, found_colors.data());
+    image.convertTo(image, CV_8UC3, 255);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("color.png", image);
+  }
 
-  // {
-  //   cv::Mat image(image_height, image_width, CV_32FC3, found_normals.data());
-  //   image.convertTo(image, CV_8UC3, 127.5, 127.5);
-  //   cv::cvtColor(image, image, CV_BGR2RGB);
-  //   cv::imwrite("normal.png", image);
-  // }
+  {
+    cv::Mat image(image_height, image_width, CV_32FC3, found_normals.data());
+    image.convertTo(image, CV_8UC3, 127.5, 127.5);
+    cv::cvtColor(image, image, CV_BGR2RGB);
+    cv::imwrite("normal.png", image);
+  }
 
   for (size_t i = 0; i < expected_depths.size(); ++i)
   {
@@ -557,7 +550,7 @@ TEST(Tracer, ComputeNormals)
     const Vector2f uv(x + 0.5f, y + 0.5f);
     const float r = (uv - center).Norm();
 
-    if (197 <= r && r <= 203)
+    if (180 <= r && r <= 203)
     {
       continue;
     }
@@ -574,16 +567,21 @@ TEST(Tracer, ComputeNormals)
     const Vector2f uv(x + 0.5f, y + 0.5f);
     const float r = (uv - center).Norm();
 
-    if (197 <= r && r <= 203)
+    if (180 <= r && r <= 203)
+    {
+      continue;
+    }
+
+    if (x % 20 < 5 || x % 20 > 15 || y % 20 < 5 || y % 20 > 15)
     {
       continue;
     }
 
     const Vector3f& found = found_colors[i];
     const Vector3f& expected = expected_colors[i];
-    ASSERT_FLOAT_EQ(expected[0], found[0]);
-    ASSERT_FLOAT_EQ(expected[1], found[1]);
-    ASSERT_FLOAT_EQ(expected[2], found[2]);
+    ASSERT_NEAR(expected[0], found[0], 0.005);
+    ASSERT_NEAR(expected[1], found[1], 0.005);
+    ASSERT_NEAR(expected[2], found[2], 0.005);
   }
 }
 

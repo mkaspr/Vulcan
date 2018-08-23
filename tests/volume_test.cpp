@@ -212,13 +212,15 @@ TEST_F(Volume, UpdateBlockVisibility)
     HashEntry entry;
     thrust::device_ptr<HashEntry> hash_entries(hash_entries_.GetData());
 
-    entry.block = Block(10, -2, 33);
+    const float scale = 1.0f / (Block::resolution * voxel_length_);
+
+    entry.block = Block(10 * scale, -2 * scale, 33 * scale);
     hash_entries[  3] = entry;
 
-    entry.block = Block(-10, -2, 28);
+    entry.block = Block(-10 * scale, -2 * scale, 28 * scale);
     hash_entries[ 17] = entry;
 
-    entry.block = Block(11, -1, 53);
+    entry.block = Block(11 * scale, -1 * scale, 53 * scale);
     hash_entries[315] = entry;
 
     expected_count = 0;

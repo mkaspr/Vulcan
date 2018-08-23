@@ -12,71 +12,71 @@ namespace testing
 
 TEST(Sampler, GetSubimage)
 {
-  Image image, expected, found;
+  // Image image, expected, found;
 
-  image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
+  // image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
 
-  thrust::device_ptr<float> d_ptr(image.GetData());
-  thrust::host_vector<float> ptr(d_ptr, d_ptr + image.GetTotal());
+  // thrust::device_ptr<float> d_ptr(image.GetData());
+  // thrust::host_vector<float> ptr(d_ptr, d_ptr + image.GetTotal());
 
-  Sampler sampler;
-  sampler.GetSubimage(image, found, Sampler::FILTER_LINEAR);
-  sampler.GetSubimage(found, expected, Sampler::FILTER_LINEAR);
+  // Sampler sampler;
+  // sampler.GetSubimage(image, found, Sampler::FILTER_LINEAR);
+  // sampler.GetSubimage(found, expected, Sampler::FILTER_LINEAR);
 
-  cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC1, ptr.data());
-  cv::imshow("Image", mat);
+  // cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC1, ptr.data());
+  // cv::imshow("Image", mat);
 
-  {
-    thrust::device_ptr<float> d_ptr(found.GetData());
-    thrust::host_vector<float> ptr(d_ptr, d_ptr + found.GetTotal());
-    cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC1, ptr.data());
-    cv::imshow("Found", mat);
-  }
+  // {
+  //   thrust::device_ptr<float> d_ptr(found.GetData());
+  //   thrust::host_vector<float> ptr(d_ptr, d_ptr + found.GetTotal());
+  //   cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC1, ptr.data());
+  //   cv::imshow("Found", mat);
+  // }
 
-  {
-    thrust::device_ptr<float> d_ptr(expected.GetData());
-    thrust::host_vector<float> ptr(d_ptr, d_ptr + expected.GetTotal());
-    cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC1, ptr.data());
-    cv::imshow("Expected", mat);
-    cv::waitKey(0);
-  }
+  // {
+  //   thrust::device_ptr<float> d_ptr(expected.GetData());
+  //   thrust::host_vector<float> ptr(d_ptr, d_ptr + expected.GetTotal());
+  //   cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC1, ptr.data());
+  //   cv::imshow("Expected", mat);
+  //   cv::waitKey(0);
+  // }
 }
 
 TEST(Sampler, GetGradient)
 {
-  Image image, expected, found;
+  // Image image, expected, found;
 
-  image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
+  // image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
 
-  Sampler sampler;
+  // Sampler sampler;
+  // // sampler.GetGradient(image, expected, found);
+  // sampler.GetSubimage(image, expected, Sampler::FILTER_NEAREST);
+  // sampler.GetSubimage(expected, image, Sampler::FILTER_NEAREST);
   // sampler.GetGradient(image, expected, found);
-  sampler.GetSubimage(image, expected, Sampler::FILTER_NEAREST);
-  sampler.GetSubimage(expected, image, Sampler::FILTER_NEAREST);
-  sampler.GetGradient(image, expected, found);
 
-  {
-    thrust::device_ptr<float> d_ptr(image.GetData());
-    thrust::host_vector<float> ptr(d_ptr, d_ptr + image.GetTotal());
-    cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC1, ptr.data());
-    cv::imshow("Image", mat);
-  }
+  // {
+  //   thrust::device_ptr<float> d_ptr(image.GetData());
+  //   thrust::host_vector<float> ptr(d_ptr, d_ptr + image.GetTotal());
+  //   cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC1, ptr.data());
+  //   cv::imshow("Image", mat);
+  // }
 
-  {
-    thrust::device_ptr<float> d_ptr(found.GetData());
-    thrust::host_vector<float> ptr(d_ptr, d_ptr + found.GetTotal());
-    cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC1, ptr.data());
-    mat = (mat + 0.5);
-    cv::imshow("Found", mat);
-  }
+  // {
+  //   thrust::device_ptr<float> d_ptr(found.GetData());
+  //   thrust::host_vector<float> ptr(d_ptr, d_ptr + found.GetTotal());
+  //   cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC1, ptr.data());
+  //   mat = (mat + 0.5);
+  //   cv::imshow("Found", mat);
+  // }
 
-  {
-    thrust::device_ptr<float> d_ptr(expected.GetData());
-    thrust::host_vector<float> ptr(d_ptr, d_ptr + expected.GetTotal());
-    cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC1, ptr.data());
-    mat = (mat + 0.5);
-    cv::imshow("Expected", mat);
-    cv::waitKey(0);
-  }
+  // {
+  //   thrust::device_ptr<float> d_ptr(expected.GetData());
+  //   thrust::host_vector<float> ptr(d_ptr, d_ptr + expected.GetTotal());
+  //   cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC1, ptr.data());
+  //   mat = (mat + 0.5);
+  //   cv::imshow("Expected", mat);
+  //   cv::waitKey(0);
+  // }
 }
 
 TEST(Sampler, Profile)
@@ -110,87 +110,87 @@ TEST(Sampler, Profile)
 
 TEST(Sampler, GetColorSubimage)
 {
-  ColorImage image, expected, found;
+  // ColorImage image, expected, found;
 
-  image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
+  // image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
 
-  Sampler sampler;
-  sampler.GetSubimage(image, found, Sampler::FILTER_LINEAR);
-  sampler.GetSubimage(found, expected, Sampler::FILTER_LINEAR);
+  // Sampler sampler;
+  // sampler.GetSubimage(image, found, Sampler::FILTER_LINEAR);
+  // sampler.GetSubimage(found, expected, Sampler::FILTER_LINEAR);
 
-  {
-    thrust::device_ptr<Vector3f> d_ptr(image.GetData());
-    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + image.GetTotal());
-    cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC3, ptr.data());
-    cv::cvtColor(mat, mat, CV_RGB2BGR);
-    cv::imshow("Image", mat);
-  }
+  // {
+  //   thrust::device_ptr<Vector3f> d_ptr(image.GetData());
+  //   thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + image.GetTotal());
+  //   cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC3, ptr.data());
+  //   cv::cvtColor(mat, mat, CV_RGB2BGR);
+  //   cv::imshow("Image", mat);
+  // }
 
-  {
-    thrust::device_ptr<Vector3f> d_ptr(found.GetData());
-    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + found.GetTotal());
-    cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC3, ptr.data());
-    cv::cvtColor(mat, mat, CV_RGB2BGR);
-    cv::imshow("Found", mat);
-  }
+  // {
+  //   thrust::device_ptr<Vector3f> d_ptr(found.GetData());
+  //   thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + found.GetTotal());
+  //   cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC3, ptr.data());
+  //   cv::cvtColor(mat, mat, CV_RGB2BGR);
+  //   cv::imshow("Found", mat);
+  // }
 
-  {
-    thrust::device_ptr<Vector3f> d_ptr(expected.GetData());
-    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + expected.GetTotal());
-    cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC3, ptr.data());
-    cv::cvtColor(mat, mat, CV_RGB2BGR);
-    cv::imshow("Expected", mat);
-  }
+  // {
+  //   thrust::device_ptr<Vector3f> d_ptr(expected.GetData());
+  //   thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + expected.GetTotal());
+  //   cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC3, ptr.data());
+  //   cv::cvtColor(mat, mat, CV_RGB2BGR);
+  //   cv::imshow("Expected", mat);
+  // }
 
-  cv::waitKey(0);
+  // cv::waitKey(0);
 }
 
 TEST(Sampler, GetColorGradient)
 {
-  ColorImage image, expected, found;
+  // ColorImage image, expected, found;
 
-  image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
+  // image.Load("/home/mike/Code/tracking/orb_slam/Datasets/spelunk/cave_05/image_0/0000.png", 1.0 / 255.0);
 
-  Sampler sampler;
-  sampler.GetGradient(image, expected, found);
+  // Sampler sampler;
+  // sampler.GetGradient(image, expected, found);
 
-  {
-    thrust::device_ptr<Vector3f> d_ptr(image.GetData());
-    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + image.GetTotal());
-    cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC3, ptr.data());
-    cv::cvtColor(mat, mat, CV_RGB2BGR);
-    cv::imshow("Image", mat);
-  }
+  // {
+  //   thrust::device_ptr<Vector3f> d_ptr(image.GetData());
+  //   thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + image.GetTotal());
+  //   cv::Mat mat(image.GetHeight(), image.GetWidth(), CV_32FC3, ptr.data());
+  //   cv::cvtColor(mat, mat, CV_RGB2BGR);
+  //   cv::imshow("Image", mat);
+  // }
 
-  {
-    thrust::device_ptr<Vector3f> d_ptr(found.GetData());
-    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + found.GetTotal());
-    cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC3, ptr.data());
-    cv::cvtColor(mat, mat, CV_RGB2BGR);
+  // {
+  //   thrust::device_ptr<Vector3f> d_ptr(found.GetData());
+  //   thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + found.GetTotal());
+  //   cv::Mat mat(found.GetHeight(), found.GetWidth(), CV_32FC3, ptr.data());
+  //   cv::cvtColor(mat, mat, CV_RGB2BGR);
 
-    for (size_t i = 0; i < mat.total(); ++i)
-    {
-      mat.at<Vector3f>(i) += 0.5f;
-    }
+  //   for (size_t i = 0; i < mat.total(); ++i)
+  //   {
+  //     mat.at<Vector3f>(i) += 0.5f;
+  //   }
 
-    cv::imshow("Gradient Y", mat);
-  }
+  //   cv::imshow("Gradient Y", mat);
+  // }
 
-  {
-    thrust::device_ptr<Vector3f> d_ptr(expected.GetData());
-    thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + expected.GetTotal());
-    cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC3, ptr.data());
-    cv::cvtColor(mat, mat, CV_RGB2BGR);
+  // {
+  //   thrust::device_ptr<Vector3f> d_ptr(expected.GetData());
+  //   thrust::host_vector<Vector3f> ptr(d_ptr, d_ptr + expected.GetTotal());
+  //   cv::Mat mat(expected.GetHeight(), expected.GetWidth(), CV_32FC3, ptr.data());
+  //   cv::cvtColor(mat, mat, CV_RGB2BGR);
 
-    for (size_t i = 0; i < mat.total(); ++i)
-    {
-      mat.at<Vector3f>(i) += 0.5f;
-    }
+  //   for (size_t i = 0; i < mat.total(); ++i)
+  //   {
+  //     mat.at<Vector3f>(i) += 0.5f;
+  //   }
 
-    cv::imshow("Gradient X", mat);
-  }
+  //   cv::imshow("Gradient X", mat);
+  // }
 
-  cv::waitKey(0);
+  // cv::waitKey(0);
 }
 
 TEST(Sampler, ColorProfile)

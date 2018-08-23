@@ -34,6 +34,7 @@ void Tracer::ComputePatches(const Frame& frame)
   const Buffer<int>& visible = volume_->GetVisibleBlocks();
   const Buffer<HashEntry>& entries = volume_->GetHashEntries();
   const float block_length = Block::resolution * volume_->GetVoxelLength();
+  const float inv_trunc_length = 1.0f / volume_->GetTruncationLength();
   const int image_height = frame.depth_image->GetHeight();
   const int image_width = frame.depth_image->GetWidth();
   const int bounds_width = 80; // TODO: expose variable
@@ -42,9 +43,9 @@ void Tracer::ComputePatches(const Frame& frame)
   ResetBufferSize();
 
   vulcan::ComputePatches(visible.GetData(), entries.GetData(), frame.Tcw,
-      frame.projection, block_length, visible.GetSize(), image_width,
-      image_height, bounds_width, bounds_height, patches_.GetData(),
-      buffer_size_.GetData());
+      frame.projection, block_length, inv_trunc_length, visible.GetSize(),
+      image_width, image_height, bounds_width, bounds_height,
+      patches_.GetData(), buffer_size_.GetData());
 
   patches_.Resize(GetBufferSize());
 }
