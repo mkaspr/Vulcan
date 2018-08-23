@@ -13,8 +13,8 @@ class Voxel;
 
 void ComputePatches(const int* indices, const HashEntry* entries,
     const Transform& Tcw, const Projection& projection, float block_length,
-    float voxel_length, int block_count, int image_width, int image_height,
-    int bounds_width, int bounds_height, Patch* patches, int* patch_count);
+    int block_count, int image_width, int image_height, int bounds_width,
+    int bounds_height, Patch* patches, int* patch_count);
 
 void ComputeBounds(const Patch* patches, Vector2f* bounds, int bounds_width,
     int patch_count);

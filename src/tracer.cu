@@ -14,8 +14,8 @@ template <int BLOCK_SIZE>
 VULCAN_GLOBAL
 void ComputePatchesKernel(const int* indices, const HashEntry* entries,
     const Transform Tcw, const Projection projection, float block_length,
-    float inv_voxel_length, int block_count, int image_width, int image_height,
-    int bounds_width, int bounds_height, Patch* patches, int* patch_count)
+    int block_count, int image_width, int image_height, int bounds_width,
+    int bounds_height, Patch* patches, int* patch_count)
 {
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -23,10 +23,6 @@ void ComputePatchesKernel(const int* indices, const HashEntry* entries,
   Vector2s bmin(bounds_width, bounds_height);
   Vector2f depth_bounds(+FLT_MAX, -FLT_MAX);
   const int patch_size = Patch::max_size;
-
-  // TODO: expose parameters
-  const float dmin = 0.1f * inv_voxel_length;
-  const float dmax = 5.0f * inv_voxel_length;
 
   if (index < block_count)
   {
@@ -60,9 +56,9 @@ void ComputePatchesKernel(const int* indices, const HashEntry* entries,
           bmax[0] = clamp<short>(max((short)ceilf(uv[0]), bmax[0]), 0, bounds_width - 1);
           bmax[1] = clamp<short>(max((short)ceilf(uv[1]), bmax[1]), 0, bounds_height - 1);
 
-          const float depth = Xcp[2] * inv_voxel_length;
-          depth_bounds[0] = clamp(min(depth, depth_bounds[0]), dmin, dmax);
-          depth_bounds[1] = clamp(max(depth, depth_bounds[1]), dmin, dmax);
+          // TODO: expose parameters
+          depth_bounds[0] = clamp(min(Xcp[2], depth_bounds[0]), 0.1f, 5.0f);
+          depth_bounds[1] = clamp(max(Xcp[2], depth_bounds[1]), 0.1f, 5.0f);
         }
       }
     }
@@ -329,7 +325,7 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
     if (bound[0] < bound[1])
     {
       const Vector2f uv(x + 0.5f, y + 0.5f);
-      const Vector3f Xcp = projection.Unproject(uv, voxel_length * bound[0]);
+      const Vector3f Xcp = projection.Unproject(uv, bound[0]);
       const Vector3f Xwp = Vector3f(Twc * Vector4f(Xcp, 1.0f));
       const Vector3f dir = Vector3f(Twc * Vector4f(Xcp, 0.0f)).Normalized();
 
@@ -343,7 +339,7 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
       const int r = Block::resolution;
       const int rr = r * r;
 
-      depth = voxel_length * bound[0];
+      depth = bound[0];
       color = Vector3f(0, 0, 0);
       int iters = 0;
 
@@ -433,7 +429,7 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
           break;
         }
       }
-      while (depth < voxel_length * bound[1]);
+      while (depth < bound[1]);
     }
 
     const int pixel = y * image_width + x;
@@ -444,16 +440,15 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
 
 void ComputePatches(const int* indices, const HashEntry* entries,
     const Transform& Tcw, const Projection& projection, float block_length,
-    float voxel_length, int block_count, int image_width, int image_height,
-    int bounds_width, int bounds_height, Patch* patches, int* patch_count)
+    int block_count, int image_width, int image_height, int bounds_width,
+    int bounds_height, Patch* patches, int* patch_count)
 {
   const int threads = 512;
   const int blocks = GetKernelBlocks(block_count, threads);
 
   CUDA_LAUNCH(ComputePatchesKernel<threads>, blocks, threads, 0, 0,
-      indices, entries, Tcw, projection, block_length, 1.0f / voxel_length,
-      block_count, image_width, image_height, bounds_width, bounds_height,
-      patches, patch_count);
+      indices, entries, Tcw, projection, block_length, block_count, image_width,
+      image_height, bounds_width, bounds_height, patches, patch_count);
 }
 
 void ComputeBounds(const Patch* patches, Vector2f* bounds, int bounds_width,
