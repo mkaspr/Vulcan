@@ -207,20 +207,21 @@ Vector4f GetInterpolatedDistance(const HashEntry* entries, const Voxel* voxels,
   const int i0y = floorf(wy - 0.5f);
   const int i0z = floorf(wz - 0.5f);
 
+  Voxel v000;
+  Voxel v001;
+  Voxel v010;
+  Voxel v011;
+  Voxel v100;
+  Voxel v101;
+  Voxel v110;
+  Voxel v111;
+
   if (i0x >= 0 && i0y >= 0 && i0z >= 0 &&
       i0x < Block::resolution - 1 &&
       i0y < Block::resolution - 1 &&
       i0z < Block::resolution - 1)
   {
-    // compute depth via trilinear interpolation
     // all samples come from current block
-
-    Vector3f w1;
-    w1[0] = wx - (i0x + 0.5f);
-    w1[1] = wy - (i0y + 0.5f);
-    w1[2] = wz - (i0z + 0.5f);
-
-    Vector3f w0 = Vector3f::Ones() - w1;
 
     const int i000 = (i0z + 0) * rr + (i0y + 0) * r + (i0x + 0);
     const int i001 = (i0z + 0) * rr + (i0y + 0) * r + (i0x + 1);
@@ -231,110 +232,72 @@ Vector4f GetInterpolatedDistance(const HashEntry* entries, const Voxel* voxels,
     const int i110 = (i0z + 1) * rr + (i0y + 1) * r + (i0x + 0);
     const int i111 = (i0z + 1) * rr + (i0y + 1) * r + (i0x + 1);
 
-    const Voxel v000 = voxels[block_offset + i000];
-    const Voxel v001 = voxels[block_offset + i001];
-    const Voxel v010 = voxels[block_offset + i010];
-    const Voxel v011 = voxels[block_offset + i011];
-    const Voxel v100 = voxels[block_offset + i100];
-    const Voxel v101 = voxels[block_offset + i101];
-    const Voxel v110 = voxels[block_offset + i110];
-    const Voxel v111 = voxels[block_offset + i111];
-
-    const float n000 = v000.distance;
-    const float n001 = v001.distance;
-    const float n010 = v010.distance;
-    const float n011 = v011.distance;
-    const float n100 = v100.distance;
-    const float n101 = v101.distance;
-    const float n110 = v110.distance;
-    const float n111 = v111.distance;
-
-    const float n00 = n000 * w0[0] + n001 * w1[0];
-    const float n01 = n010 * w0[0] + n011 * w1[0];
-    const float n10 = n100 * w0[0] + n101 * w1[0];
-    const float n11 = n110 * w0[0] + n111 * w1[0];
-
-    const float n0 = n00 * w0[1] + n01 * w1[1];
-    const float n1 = n10 * w0[1] + n11 * w1[1];
-
-    const Vector3f c000 = v000.color;
-    const Vector3f c001 = v001.color;
-    const Vector3f c010 = v010.color;
-    const Vector3f c011 = v011.color;
-    const Vector3f c100 = v100.color;
-    const Vector3f c101 = v101.color;
-    const Vector3f c110 = v110.color;
-    const Vector3f c111 = v111.color;
-
-    const Vector3f c00 = c000 * w0[0] + c001 * w1[0];
-    const Vector3f c01 = c010 * w0[0] + c011 * w1[0];
-    const Vector3f c10 = c100 * w0[0] + c101 * w1[0];
-    const Vector3f c11 = c110 * w0[0] + c111 * w1[0];
-
-    const Vector3f c0 = c00 * w0[1] + c01 * w1[1];
-    const Vector3f c1 = c10 * w0[1] + c11 * w1[1];
-
-    sdf = n0 * w0[2] + n1 * w1[2];
-    color = c0 * w0[2] + c1 * w1[2];
+    v000 = voxels[block_offset + i000];
+    v001 = voxels[block_offset + i001];
+    v010 = voxels[block_offset + i010];
+    v011 = voxels[block_offset + i011];
+    v100 = voxels[block_offset + i100];
+    v101 = voxels[block_offset + i101];
+    v110 = voxels[block_offset + i110];
+    v111 = voxels[block_offset + i111];
   }
   else
   {
-    // compute depth via trilinear interpolation
-    // requires sampling from other blocks
+    // samples come from multiple block
 
-    Vector3f w1;
-    w1[0] = wx - (i0x + 0.5f);
-    w1[1] = wy - (i0y + 0.5f);
-    w1[2] = wz - (i0z + 0.5f);
-
-    Vector3f w0 = Vector3f::Ones() - w1;
-
-    const Voxel v000 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 0, i0z + 0);
-    const Voxel v001 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 0, i0z + 0);
-    const Voxel v010 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 1, i0z + 0);
-    const Voxel v011 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 1, i0z + 0);
-    const Voxel v100 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 0, i0z + 1);
-    const Voxel v101 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 0, i0z + 1);
-    const Voxel v110 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 1, i0z + 1);
-    const Voxel v111 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 1, i0z + 1);
-
-    const float n000 = v000.distance;
-    const float n001 = v001.distance;
-    const float n010 = v010.distance;
-    const float n011 = v011.distance;
-    const float n100 = v100.distance;
-    const float n101 = v101.distance;
-    const float n110 = v110.distance;
-    const float n111 = v111.distance;
-
-    const float n00 = n000 * w0[0] + n001 * w1[0];
-    const float n01 = n010 * w0[0] + n011 * w1[0];
-    const float n10 = n100 * w0[0] + n101 * w1[0];
-    const float n11 = n110 * w0[0] + n111 * w1[0];
-
-    const float n0 = n00 * w0[1] + n01 * w1[1];
-    const float n1 = n10 * w0[1] + n11 * w1[1];
-
-    const Vector3f c000 = v000.color;
-    const Vector3f c001 = v001.color;
-    const Vector3f c010 = v010.color;
-    const Vector3f c011 = v011.color;
-    const Vector3f c100 = v100.color;
-    const Vector3f c101 = v101.color;
-    const Vector3f c110 = v110.color;
-    const Vector3f c111 = v111.color;
-
-    const Vector3f c00 = c000 * w0[0] + c001 * w1[0];
-    const Vector3f c01 = c010 * w0[0] + c011 * w1[0];
-    const Vector3f c10 = c100 * w0[0] + c101 * w1[0];
-    const Vector3f c11 = c110 * w0[0] + c111 * w1[0];
-
-    const Vector3f c0 = c00 * w0[1] + c01 * w1[1];
-    const Vector3f c1 = c10 * w0[1] + c11 * w1[1];
-
-    sdf = n0 * w0[2] + n1 * w1[2];
-    color = c0 * w0[2] + c1 * w1[2];
+    v000 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 0, i0z + 0);
+    v001 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 0, i0z + 0);
+    v010 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 1, i0z + 0);
+    v011 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 1, i0z + 0);
+    v100 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 0, i0z + 1);
+    v101 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 0, i0z + 1);
+    v110 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 0, i0y + 1, i0z + 1);
+    v111 = GetVoxel(K, entries, voxels, bx, by, bz, i0x + 1, i0y + 1, i0z + 1);
   }
+
+  Vector3f w1;
+  w1[0] = wx - (i0x + 0.5f);
+  w1[1] = wy - (i0y + 0.5f);
+  w1[2] = wz - (i0z + 0.5f);
+
+  Vector3f w0 = Vector3f::Ones() - w1;
+
+  const float n000 = v000.distance;
+  const float n001 = v001.distance;
+  const float n010 = v010.distance;
+  const float n011 = v011.distance;
+  const float n100 = v100.distance;
+  const float n101 = v101.distance;
+  const float n110 = v110.distance;
+  const float n111 = v111.distance;
+
+  const float n00 = n000 * w0[0] + n001 * w1[0];
+  const float n01 = n010 * w0[0] + n011 * w1[0];
+  const float n10 = n100 * w0[0] + n101 * w1[0];
+  const float n11 = n110 * w0[0] + n111 * w1[0];
+
+  const float n0 = n00 * w0[1] + n01 * w1[1];
+  const float n1 = n10 * w0[1] + n11 * w1[1];
+
+  const Vector3f c000 = v000.GetColor();
+  const Vector3f c001 = v001.GetColor();
+  const Vector3f c010 = v010.GetColor();
+  const Vector3f c011 = v011.GetColor();
+  const Vector3f c100 = v100.GetColor();
+  const Vector3f c101 = v101.GetColor();
+  const Vector3f c110 = v110.GetColor();
+  const Vector3f c111 = v111.GetColor();
+
+  const Vector3f c00 = c000 * w0[0] + c001 * w1[0];
+  const Vector3f c01 = c010 * w0[0] + c011 * w1[0];
+  const Vector3f c10 = c100 * w0[0] + c101 * w1[0];
+  const Vector3f c11 = c110 * w0[0] + c111 * w1[0];
+
+  const Vector3f c0 = c00 * w0[1] + c01 * w1[1];
+  const Vector3f c1 = c10 * w0[1] + c11 * w1[1];
+
+  sdf = n0 * w0[2] + n1 * w1[2];
+  color = c0 * w0[2] + c1 * w1[2];
 
   return Vector4f(sdf, color[0], color[1], color[2]);
 }

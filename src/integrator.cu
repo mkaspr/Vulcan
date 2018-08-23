@@ -68,11 +68,11 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
       const Vector3f curr_color = colors[image_index];
       const float prev_dist = voxel.weight * voxel.distance;
       const float curr_dist = min(1.0f, distance / truncation_length);
-      const Vector3f prev_color = voxel.weight * voxel.color;
+      const Vector3f prev_color = voxel.weight * voxel.GetColor();
       const float new_weight = voxel.weight + 1;
       voxel.weight = min(max_weight, new_weight);
       voxel.distance = (prev_dist + curr_dist) / new_weight;
-      voxel.color = (prev_color + curr_color) / new_weight;
+      voxel.SetColor((prev_color + curr_color) / new_weight);
       voxels[voxel_index] = voxel;
     }
   }

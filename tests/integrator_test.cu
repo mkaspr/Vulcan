@@ -185,10 +185,10 @@ TEST(Integrator, Integrate)
               const Vector3f curr_color = colors[image_index];
               const float prev_distance = voxel.weight * voxel.distance;
               const float curr_distance = min(1.0f, distance / trunc_length);
-              const Vector3f prev_color = voxel.weight * voxel.color;
+              const Vector3f prev_color = voxel.weight * voxel.GetColor();
               float new_weight = voxel.weight + 1;
               voxel.distance = (prev_distance + curr_distance) / new_weight;
-              voxel.color = (prev_color + curr_color) / new_weight;
+              voxel.SetColor((prev_color + curr_color) / new_weight);
               new_weight = min(integrator.GetMaxWeight(), new_weight);
               voxel.weight = new_weight;
             }
