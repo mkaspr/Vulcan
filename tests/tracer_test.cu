@@ -30,8 +30,8 @@ TEST(Tracer, ComputePatches)
   const int image_height = 480;
   const int bounds_width = 80;
   const int bounds_height = 60;
-  const float trunc_length = 0.04;
-  const float inv_trunc_length = 1.0f / trunc_length;
+  const float voxel_length = 0.008;
+  const float inv_voxel_length = 1.0f / voxel_length;
 
   const Transform Tcw =
       Transform::Translate(0.3f, -1.3f, 3.7f) *
@@ -93,7 +93,7 @@ TEST(Tracer, ComputePatches)
           bmax[0] = clamp(max((int)ceilf(u), bmax[0]), 0, bounds_width - 1);
           bmax[1] = clamp(max((int)ceilf(v), bmax[1]), 0, bounds_height - 1);
 
-          const float depth = Xcp[2] * inv_trunc_length;
+          const float depth = Xcp[2] * inv_voxel_length;
           drng[0] = min(depth, drng[0]);
           drng[1] = max(depth, drng[1]);
         }
@@ -133,7 +133,7 @@ TEST(Tracer, ComputePatches)
   int* p_found_count = d_found_count.data().get();
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      inv_trunc_length, block_count, image_width, image_height, bounds_width,
+      voxel_length, block_count, image_width, image_height, bounds_width,
       bounds_height, p_found_patches, p_found_count);
 
   thrust::host_vector<Patch> found_patches(d_found_patches);
@@ -148,8 +148,8 @@ TEST(Tracer, ComputePatches)
     {
       Patch& expected = expected_patches[j];
 
-      if (fabsf(expected.bounds[0] - found.bounds[0]) < 1E-5f &&
-          fabsf(expected.bounds[1] - found.bounds[1]) < 1E-5f &&
+      if (fabsf(expected.bounds[0] - found.bounds[0]) < 1E-4f &&
+          fabsf(expected.bounds[1] - found.bounds[1]) < 1E-4f &&
           expected.origin[0] == found.origin[0] &&
           expected.origin[1] == found.origin[1] &&
           expected.size[0] == found.size[0] &&
@@ -252,7 +252,6 @@ TEST(Tracer, ComputePoints)
   const float trunc_length = 0.04;
   const float voxel_length = 0.008;
   const float block_length = voxel_length * Block::resolution;
-  const float inv_trunc_length = 1.0f / trunc_length;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(4096, 2048);
@@ -323,7 +322,7 @@ TEST(Tracer, ComputePoints)
   d_patch_count[0] = 0;
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      inv_trunc_length, visible_count, image_width, image_height, bounds_width,
+      voxel_length, visible_count, image_width, image_height, bounds_width,
       bounds_height, p_patches, p_patch_count);
 
   const int patch_count = d_patch_count[0];
@@ -397,7 +396,6 @@ TEST(Tracer, ComputeNormals)
   const float trunc_length = 0.04;
   const float voxel_length = 0.008;
   const float block_length = voxel_length * Block::resolution;
-  const float inv_trunc_length = 1.0f / trunc_length;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(2 * 4096, 2 * 2048);
@@ -504,7 +502,7 @@ TEST(Tracer, ComputeNormals)
   d_patch_count[0] = 0;
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      inv_trunc_length, visible_count, image_width, image_height, bounds_width,
+      voxel_length, visible_count, image_width, image_height, bounds_width,
       bounds_height, p_patches, p_patch_count);
 
   const int patch_count = d_patch_count[0];
