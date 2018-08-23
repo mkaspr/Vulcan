@@ -2,10 +2,10 @@
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
 #include <thrust/host_vector.h>
+#include <vulcan/color_integrator.h>
 #include <vulcan/frame.h>
 #include <vulcan/hash.h>
 #include <vulcan/image.h>
-#include <vulcan/integrator.h>
 #include <vulcan/volume.h>
 #include <vulcan/voxel.h>
 
@@ -56,7 +56,7 @@ TEST(Integrator, Constructor)
 {
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>();
-  Integrator integrator(volume);
+  ColorIntegrator integrator(volume);
   ASSERT_EQ(volume, integrator.GetVolume());
   ASSERT_EQ(16, integrator.GetMaxWeight());
 }
@@ -65,7 +65,7 @@ TEST(Integrator, MaxWeight)
 {
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>();
-  Integrator integrator(volume);
+  ColorIntegrator integrator(volume);
 
   integrator.SetMaxWeight(10);
   ASSERT_EQ(10, integrator.GetMaxWeight());
@@ -113,7 +113,7 @@ TEST(Integrator, Integrate)
   volume->SetVoxelLength(voxel_length);
   volume->SetView(frame);
 
-  Integrator integrator(volume);
+  ColorIntegrator integrator(volume);
   integrator.SetMaxWeight(16);
   integrator.Integrate(frame);
 

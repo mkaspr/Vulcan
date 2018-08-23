@@ -3,10 +3,10 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <opencv2/opencv.hpp>
+#include <vulcan/color_integrator.h>
 #include <vulcan/device.h>
 #include <vulcan/frame.h>
 #include <vulcan/hash.h>
-#include <vulcan/integrator.h>
 #include <vulcan/tracer.cuh>
 #include <vulcan/tracer.h>
 #include <vulcan/volume.h>
@@ -298,7 +298,7 @@ TEST(Tracer, ComputePoints)
   }
   while (visible_count != volume->GetVisibleBlocks().GetSize());
 
-  Integrator integrator(volume);
+  ColorIntegrator integrator(volume);
   integrator.Integrate(frame);
 
   const int block_count = volume->GetMainBlockCount();
@@ -476,7 +476,7 @@ TEST(Tracer, ComputeNormals)
   }
   while (visible_count != volume->GetVisibleBlocks().GetSize());
 
-  Integrator integrator(volume);
+  ColorIntegrator integrator(volume);
   integrator.Integrate(frame);
 
   const int block_count = volume->GetMainBlockCount();

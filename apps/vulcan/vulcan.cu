@@ -31,7 +31,7 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating integrator...";
 
-  Integrator integrator(volume);
+  ColorIntegrator integrator(volume);
   integrator.SetMaxWeight(8);
 
   LOG(INFO) << "Creating tracer...";

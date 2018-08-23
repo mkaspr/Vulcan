@@ -20,7 +20,7 @@ class Integrator
 
     void SetMaxWeight(float weight);
 
-    void Integrate(const Frame& frame);
+    virtual void Integrate(const Frame& frame) = 0;
 
   protected:
 
