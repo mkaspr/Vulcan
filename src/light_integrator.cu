@@ -1,4 +1,4 @@
-#include <vulcan/color_integrator.h>
+#include <vulcan/light_integrator.h>
 #include <vulcan/block.h>
 #include <vulcan/buffer.h>
 #include <vulcan/device.h>
@@ -11,13 +11,16 @@
 
 namespace vulcan
 {
+namespace
+{
 
 VULCAN_GLOBAL
 void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
-    float voxel_length, float block_length, float truncation_length,
-    const float* depths, const Vector3f* colors, int image_width,
-    int image_height, float max_dist_weight, float max_color_weight,
-    const Projection projection, const Transform Tcw, Voxel* voxels)
+    float voxel_length, const Light light, float block_length,
+    float truncation_length, const float* depths, const Vector3f* colors,
+    const Vector3f* normals, int image_width, int image_height,
+    float max_dist_weight, float max_color_weight, const Projection projection,
+    const Transform Tcw, Voxel* voxels)
 {
   // get voxel indices
   const int x = threadIdx.x;
@@ -63,29 +66,58 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
       const int block_index = entry.data * Block::voxel_count;
       const int voxel_index = block_index + z * r2 + y * r + x;
 
-      // update voxel data
+      // update voxel distance
       Voxel voxel = voxels[voxel_index];
-      const Vector3f curr_color = colors[image_index];
       const float prev_dist = voxel.distance_weight * voxel.distance;
       const float curr_dist = min(1.0f, distance / truncation_length);
-      const Vector3f prev_color = voxel.distance_weight * voxel.GetColor();
       const float dist_weight = voxel.distance_weight + 1;
-      const float color_weight = voxel.color_weight + 1;
-      voxel.distance_weight = min(max_dist_weight, dist_weight);
-      voxel.color_weight = min(max_color_weight, color_weight);
       voxel.distance = (prev_dist + curr_dist) / dist_weight;
-      voxel.SetColor((prev_color + curr_color) / color_weight);
+      voxel.distance_weight = min(max_dist_weight, dist_weight);
+
+      // update voxel color
+      Vector3f curr_color = colors[image_index];
+
+      if (curr_color[0] > 0.02f && curr_color[0] < 0.98f &&
+          curr_color[1] > 0.02f && curr_color[1] < 0.98f &&
+          curr_color[2] > 0.02f && curr_color[2] < 0.98f)
+      {
+        const Vector3f normal = normals[image_index];
+        const float shading = light.GetShading(Xcp, normal);
+
+        if (shading > 0.001f)
+        {
+          curr_color /= shading;
+          const float color_weight = voxel.color_weight + 1;
+          const Vector3f prev_color = voxel.color_weight * voxel.GetColor();
+          voxel.SetColor((prev_color + curr_color) / color_weight);
+          voxel.color_weight = min(max_color_weight, color_weight);
+        }
+      }
+
+      // assign updated voxel
       voxels[voxel_index] = voxel;
     }
   }
 }
 
-ColorIntegrator::ColorIntegrator(std::shared_ptr<Volume> volume) :
+} // namespace
+
+LightIntegrator::LightIntegrator(std::shared_ptr<Volume> volume) :
   Integrator(volume)
 {
 }
 
-void ColorIntegrator::Integrate(const Frame& frame)
+const Light& LightIntegrator::GetLight() const
+{
+  return light_;
+}
+
+void LightIntegrator::SetLight(const Light& light)
+{
+  light_ = light;
+}
+
+void LightIntegrator::Integrate(const Frame& frame)
 {
   // TODO: handle color and depth images that aren't co-located
   // for all visible voxels, project onto depth image and integrate
@@ -104,6 +136,7 @@ void ColorIntegrator::Integrate(const Frame& frame)
   const float truncation_length = volume_->GetTruncationLength();
   const float* depths = frame.depth_image->GetData();
   const Vector3f* colors = frame.color_image->GetData();
+  const Vector3f* normals = frame.normal_image->GetData();
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
   const Projection& projection = frame.projection;
@@ -115,9 +148,9 @@ void ColorIntegrator::Integrate(const Frame& frame)
   const dim3 threads(resolution, resolution, resolution);
 
   CUDA_LAUNCH(IntegrateKernel, blocks, threads, 0, 0, indices, entries,
-      voxel_length, block_length, truncation_length, depths, colors,
-      image_width, image_height, max_distance_weight_, max_color_weight_,
-      projection, Tcw, voxels);
+      voxel_length, light_, block_length, truncation_length, depths, colors,
+      normals, image_width, image_height, max_distance_weight_,
+      max_color_weight_, projection, Tcw, voxels);
 }
 
 } // namespace vulcan

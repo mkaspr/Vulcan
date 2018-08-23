@@ -58,7 +58,7 @@ TEST(Integrator, Constructor)
   volume = std::make_shared<Volume>();
   ColorIntegrator integrator(volume);
   ASSERT_EQ(volume, integrator.GetVolume());
-  ASSERT_EQ(16, integrator.GetMaxWeight());
+  ASSERT_EQ(16, integrator.GetMaxDistanceWeight());
 }
 
 TEST(Integrator, MaxWeight)
@@ -67,15 +67,15 @@ TEST(Integrator, MaxWeight)
   volume = std::make_shared<Volume>();
   ColorIntegrator integrator(volume);
 
-  integrator.SetMaxWeight(10);
-  ASSERT_EQ(10, integrator.GetMaxWeight());
+  integrator.SetMaxDistanceWeight(10);
+  ASSERT_EQ(10, integrator.GetMaxDistanceWeight());
 
-  integrator.SetMaxWeight(2);
-  ASSERT_EQ(2, integrator.GetMaxWeight());
+  integrator.SetMaxDistanceWeight(2);
+  ASSERT_EQ(2, integrator.GetMaxDistanceWeight());
 
 #ifndef NDEBUG
-  ASSERT_THROW(integrator.SetMaxWeight(0), Exception);
-  ASSERT_THROW(integrator.SetMaxWeight(-1), Exception);
+  ASSERT_THROW(integrator.SetMaxDistanceWeight(0), Exception);
+  ASSERT_THROW(integrator.SetMaxDistanceWeight(-1), Exception);
 #endif
 }
 
@@ -114,7 +114,7 @@ TEST(Integrator, Integrate)
   volume->SetView(frame);
 
   ColorIntegrator integrator(volume);
-  integrator.SetMaxWeight(16);
+  integrator.SetMaxDistanceWeight(16);
   integrator.Integrate(frame);
 
   thrust::device_ptr<float> depth_ptr(depth_image->GetData());
@@ -183,14 +183,14 @@ TEST(Integrator, Integrate)
               Voxel& voxel = expected[voxel_index];
 
               const Vector3f curr_color = colors[image_index];
-              const float prev_distance = voxel.weight * voxel.distance;
+              const float prev_distance = voxel.distance_weight * voxel.distance;
               const float curr_distance = min(1.0f, distance / trunc_length);
-              const Vector3f prev_color = voxel.weight * voxel.GetColor();
-              float new_weight = voxel.weight + 1;
+              const Vector3f prev_color = voxel.distance_weight * voxel.GetColor();
+              float new_weight = voxel.distance_weight + 1;
               voxel.distance = (prev_distance + curr_distance) / new_weight;
               voxel.SetColor((prev_color + curr_color) / new_weight);
-              new_weight = min(integrator.GetMaxWeight(), new_weight);
-              voxel.weight = new_weight;
+              new_weight = min(integrator.GetMaxDistanceWeight(), new_weight);
+              voxel.distance_weight = new_weight;
             }
           }
         }
@@ -200,10 +200,10 @@ TEST(Integrator, Integrate)
 
   for (size_t i = 0; i < expected.size(); ++i)
   {
-    if (!border_points[i] || (expected[i].weight > 0 && found[i].weight > 0))
+    if (!border_points[i] || (expected[i].distance_weight > 0 && found[i].distance_weight > 0))
     {
       ASSERT_NEAR(expected[i].distance, found[i].distance, 1E-5);
-      ASSERT_NEAR(expected[i].weight, found[i].weight, 1E-5);
+      ASSERT_NEAR(expected[i].distance_weight, found[i].distance_weight, 1E-5);
     }
   }
 
@@ -212,10 +212,10 @@ TEST(Integrator, Integrate)
 
   for (size_t i = 0; i < expected.size(); ++i)
   {
-    if (!border_points[i] || (expected[i].weight > 0 && found[i].weight > 0))
+    if (!border_points[i] || (expected[i].distance_weight > 0 && found[i].distance_weight > 0))
     {
       ASSERT_NEAR(expected[i].distance, found[i].distance, 1E-5);
-      ASSERT_NEAR(2 * expected[i].weight, found[i].weight, 1E-5);
+      ASSERT_NEAR(2 * expected[i].distance_weight, found[i].distance_weight, 1E-5);
     }
   }
 }

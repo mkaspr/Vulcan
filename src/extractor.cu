@@ -201,7 +201,7 @@ void ExtractCubeStateKernel(const int* visible_blocks, int block_index,
           // state.state |= voxel.distance > 0;
           state.state |= (voxel.distance > 0) << 7;
 
-          if (voxel.weight == 0)
+          if (voxel.distance_weight == 0)
           {
             unknown = true;
           }

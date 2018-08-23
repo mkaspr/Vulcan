@@ -16,9 +16,13 @@ class Integrator
 
     std::shared_ptr<Volume> GetVolume() const;
 
-    float GetMaxWeight() const;
+    float GetMaxDistanceWeight() const;
 
-    void SetMaxWeight(float weight);
+    void SetMaxDistanceWeight(float weight);
+
+    float GetMaxColorWeight() const;
+
+    void SetMaxColorWeight(float weight);
 
     virtual void Integrate(const Frame& frame) = 0;
 
@@ -26,7 +30,9 @@ class Integrator
 
     std::shared_ptr<Volume> volume_;
 
-    float max_weight_;
+    float max_distance_weight_;
+
+    float max_color_weight_;
 };
 
 } // namespace vulcan

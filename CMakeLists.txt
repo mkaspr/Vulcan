@@ -60,6 +60,8 @@ set(CPP_HEADERS
   ${CPP_HEADER_DIR}/hash.h
   ${CPP_HEADER_DIR}/image.h
   ${CPP_HEADER_DIR}/integrator.h
+  ${CPP_HEADER_DIR}/light.h
+  ${CPP_HEADER_DIR}/light_integrator.h
   ${CPP_HEADER_DIR}/math.h
   ${CPP_HEADER_DIR}/matrix.h
   ${CPP_HEADER_DIR}/mesh.h
@@ -113,6 +115,7 @@ set(CUDA_SOURCES
   ${CUDA_SOURCE_DIR}/frame.cu
   ${CUDA_SOURCE_DIR}/image.cu
   ${CUDA_SOURCE_DIR}/integrator.cu
+  ${CUDA_SOURCE_DIR}/light_integrator.cu
   ${CUDA_SOURCE_DIR}/sampler.cu
   ${CUDA_SOURCE_DIR}/tracer.cu
   ${CUDA_SOURCE_DIR}/tracker.cu

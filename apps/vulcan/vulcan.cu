@@ -31,8 +31,18 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating integrator...";
 
-  ColorIntegrator integrator(volume);
-  integrator.SetMaxWeight(8);
+  Light light;
+  light.SetIntensity(2.0f);
+  light.SetPosition(0.1f, 0.0f, 0.0f);
+
+  LightIntegrator integrator(volume);
+  integrator.SetMaxDistanceWeight(200);
+  integrator.SetMaxColorWeight(16);
+  integrator.SetLight(light);
+
+  // ColorIntegrator integrator(volume);
+  // integrator.SetMaxDistanceWeight(200);
+  // integrator.SetMaxColorWeight(64);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -40,7 +50,7 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  PyramidTracker<ColorTracker> tracker;
+  PyramidTracker<DepthTracker> tracker;
   // DepthTracker tracker;
   // tracker.SetMaxIterations(1);
 
@@ -61,7 +71,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 10;
-  const int frame_stop  = 100;
+  const int frame_stop  = 200;
   const clock_t start = clock();
   bool first_frame = true;
 
@@ -77,11 +87,11 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
       // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
       VULCAN_ASSERT(depth_image->GetHeight() == h);
@@ -90,11 +100,11 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
       // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);
       VULCAN_ASSERT(color_image->GetHeight() == h);
