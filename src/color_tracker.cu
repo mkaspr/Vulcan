@@ -1,4 +1,6 @@
 #include <vulcan/color_tracker.h>
+#include <thrust/device_ptr.h>
+#include <thrust/fill.h>
 #include <vulcan/device.h>
 #include <vulcan/frame.h>
 #include <vulcan/projection.h>
@@ -592,6 +594,11 @@ void ColorTracker::ComputeSystem(const Frame& frame)
   const Transform Tcm = frame.Tcw * keyframe_->Tcw.Inverse();
   float* hessian = hessian_.GetData();
   float* gradient = gradient_.GetData();
+
+  thrust::device_ptr<float> dh(hessian);
+  thrust::device_ptr<float> dg(gradient);
+  thrust::fill(dh, dh + hessian_.GetSize(), 0.0f);
+  thrust::fill(dg, dg + gradient_.GetSize(), 0.0f);
 
   const dim3 threads(16, 16);
   const dim3 total(keyframe_width, keyframe_height);
