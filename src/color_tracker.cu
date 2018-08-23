@@ -374,4 +374,8 @@ void ColorTracker::ComputeJacobian(const Frame& frame)
   }
 }
 
+void ColorTracker::ComputeSystem(const Frame& frame)
+{
+}
+
 } // namespace vulcan

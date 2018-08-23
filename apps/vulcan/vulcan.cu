@@ -41,6 +41,8 @@ int main(int argc, char** argv)
   LOG(INFO) << "Creating tracker...";
 
   PyramidTracker<DepthTracker> tracker;
+  // DepthTracker tracker;
+  // tracker.SetMaxIterations(1);
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -59,7 +61,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 10;
-  const int frame_stop  = 200;
+  const int frame_stop  = 100;
   const clock_t start = clock();
   bool first_frame = true;
 
@@ -174,8 +176,8 @@ int main(int argc, char** argv)
 
   const clock_t stop = clock();
   const double time = double(stop - start) / (CLOCKS_PER_SEC * frame_stop);
-  LOG(INFO) << "Time: " << time << std::endl;
-  LOG(INFO) << "FPS:  " << 1 / time << std::endl;
+  std::cout << "Time: " << time << std::endl;
+  std::cout << "FPS:  " << 1 / time << std::endl;
 
   LOG(INFO) << "Success";
   return 0;

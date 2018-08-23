@@ -153,10 +153,7 @@ void Tracker::UpdateSolve(Frame& frame)
 
 void Tracker::ComputeOperands(const Frame& frame)
 {
-  ComputeResidual(frame);
-  ComputeJacobian(frame);
-  ComputeHessian();
-  ComputeGradient();
+  ComputeSystem(frame);
 }
 
 void Tracker::ComputeUpdate(Frame& frame)
@@ -173,13 +170,28 @@ void Tracker::ComputeUpdate(Frame& frame)
 
   hessian_.CopyToHost(hessian.data());
   gradient_.CopyToHost(gradient.data());
-  solver.compute(hessian);
+
+  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> hessian2;
+  hessian2.resize(parameter_count, parameter_count);
+
+  int index = 0;
+
+  for (int i = 0; i < parameter_count; ++i)
+  {
+    for (int j = 0; j <= i; ++j)
+    {
+      hessian2(i, j) = hessian.data()[index++];
+    }
+  }
+
+  hessian2.triangularView<Eigen::StrictlyUpper>() = hessian2.transpose();
+  solver.compute(hessian2);
 
   VULCAN_DEBUG(solver.info() == Eigen::Success);
 
   update = -solver.solve(gradient);
   frame.Tcw = exp(update).Inverse() * frame.Tcw;
-  if (update.norm() < 1E-5) iteration_ = max_iterations_;
+  if (update.norm() < 1E-6) iteration_ = max_iterations_;
 }
 
 void Tracker::UpdateState(const Frame& frame)

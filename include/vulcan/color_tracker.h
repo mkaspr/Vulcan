@@ -24,6 +24,8 @@ class ColorTracker : public Tracker
 
     int GetResidualCount(const Frame &frame) const override;
 
+    void ComputeSystem(const Frame& frame) override;
+
     void ComputeKeyframeIntensities();
 
     void ComputeFrameIntensities(const Frame& frame);

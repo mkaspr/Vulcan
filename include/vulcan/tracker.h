@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <Eigen/Eigen>
 #include <vulcan/buffer.h>
 #include <vulcan/device.h>
 
@@ -51,6 +52,8 @@ class Tracker
     virtual void ComputeResidual(const Frame& frame) = 0;
 
     virtual void ComputeJacobian(const Frame& frame) = 0;
+
+    virtual void ComputeSystem(const Frame& frame) = 0;
 
     void ComputeHessian();
 

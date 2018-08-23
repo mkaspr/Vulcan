@@ -19,7 +19,9 @@ class DepthTracker : public Tracker
 
     void ComputeJacobian(const Frame& frame) override;
 
-    int GetResidualCount(const Frame &frame) const override;
+    int GetResidualCount(const Frame& frame) const override;
+
+    void ComputeSystem(const Frame& frame) override;
 };
 
 } // namespace vulcan
