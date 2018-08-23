@@ -62,6 +62,7 @@ set(CPP_HEADERS
   ${CPP_HEADER_DIR}/integrator.h
   ${CPP_HEADER_DIR}/light.h
   ${CPP_HEADER_DIR}/light_integrator.h
+  ${CPP_HEADER_DIR}/light_tracker.h
   ${CPP_HEADER_DIR}/math.h
   ${CPP_HEADER_DIR}/matrix.h
   ${CPP_HEADER_DIR}/mesh.h
@@ -86,6 +87,7 @@ set(CPP_SOURCES
   ${CPP_SOURCE_DIR}/depth_tracker.cpp
   ${CPP_SOURCE_DIR}/exporter.cpp
   ${CPP_SOURCE_DIR}/frame.cpp
+  ${CPP_SOURCE_DIR}/light_tracker.cpp
   ${CPP_SOURCE_DIR}/mesh.cpp
   ${CPP_SOURCE_DIR}/pyramid_tracker.cpp
   ${CPP_SOURCE_DIR}/tracer.cpp
@@ -116,6 +118,7 @@ set(CUDA_SOURCES
   ${CUDA_SOURCE_DIR}/image.cu
   ${CUDA_SOURCE_DIR}/integrator.cu
   ${CUDA_SOURCE_DIR}/light_integrator.cu
+  ${CUDA_SOURCE_DIR}/light_tracker.cu
   ${CUDA_SOURCE_DIR}/sampler.cu
   ${CUDA_SOURCE_DIR}/tracer.cu
   ${CUDA_SOURCE_DIR}/tracker.cu

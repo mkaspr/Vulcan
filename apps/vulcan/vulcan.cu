@@ -50,9 +50,11 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  PyramidTracker<DepthTracker> tracker;
-  // DepthTracker tracker;
-  // tracker.SetMaxIterations(1);
+  // PyramidTracker<DepthTracker> tracker;
+
+  LightTracker tracker;
+  tracker.SetMaxIterations(10);
+  tracker.SetLight(light);
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 10;
-  const int frame_stop  = 200;
+  const int frame_stop  = 13;
   const clock_t start = clock();
   bool first_frame = true;
 
