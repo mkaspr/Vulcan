@@ -7,6 +7,17 @@ namespace vulcan
 {
 
 VULCAN_DEVICE
+inline void WarpReduce(volatile float* buffer, int thread)
+{
+  buffer[thread] += buffer[thread + 32];
+  buffer[thread] += buffer[thread + 16];
+  buffer[thread] += buffer[thread +  8];
+  buffer[thread] += buffer[thread +  4];
+  buffer[thread] += buffer[thread +  2];
+  buffer[thread] += buffer[thread +  1];
+}
+
+VULCAN_DEVICE
 inline void atomicMin(float* address, float value)
 {
   int* int_address = reinterpret_cast<int*>(address);

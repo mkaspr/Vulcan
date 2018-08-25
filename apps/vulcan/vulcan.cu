@@ -53,8 +53,8 @@ int main(int argc, char** argv)
   // DepthTracker tracker;
   // tracker.SetMaxIterations(1);
 
-  ColorTracker tracker;
-  tracker.SetMaxIterations(5);
+  // ColorTracker tracker;
+  // tracker.SetMaxIterations(5);
 
   // std::shared_ptr<LightTracker> light_tracker;
   // light_tracker = std::make_shared<LightTracker>();
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
   // LightTracker& tracker = *light_tracker;
   // tracker.SetMaxIterations(3);
 
-  // PyramidTracker<DepthTracker> tracker;
+  PyramidTracker<DepthTracker> tracker;
   // PyramidTracker<ColorTracker> tracker;
   // PyramidTracker<LightTracker> tracker;
 
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 10;
-  const int frame_stop  = 11;
+  const int frame_stop  = 50;
   const clock_t start = clock();
   bool first_frame = true;
 

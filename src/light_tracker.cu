@@ -6,22 +6,12 @@
 #include <vulcan/frame.h>
 #include <vulcan/projection.h>
 #include <vulcan/transform.h>
+#include <vulcan/util.cuh>
 
 #include <opencv2/opencv.hpp>
 
 namespace vulcan
 {
-
-VULCAN_DEVICE
-inline void WarpReduceY(volatile float* buffer, int thread)
-{
-  buffer[thread] += buffer[thread + 32];
-  buffer[thread] += buffer[thread + 16];
-  buffer[thread] += buffer[thread +  8];
-  buffer[thread] += buffer[thread +  4];
-  buffer[thread] += buffer[thread +  2];
-  buffer[thread] += buffer[thread +  1];
-}
 
 namespace
 {
@@ -214,9 +204,9 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
 
     if (thread < 32)
     {
-      WarpReduceY(buffer1, thread);
-      WarpReduceY(buffer2, thread);
-      WarpReduceY(buffer3, thread);
+      WarpReduce(buffer1, thread);
+      WarpReduce(buffer2, thread);
+      WarpReduce(buffer3, thread);
     }
 
     if (thread == 0)
@@ -268,9 +258,9 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
 
     if (thread < 32)
     {
-      WarpReduceY(buffer1, thread);
-      WarpReduceY(buffer2, thread);
-      WarpReduceY(buffer3, thread);
+      WarpReduce(buffer1, thread);
+      WarpReduce(buffer2, thread);
+      WarpReduce(buffer3, thread);
     }
 
     if (thread == 0)
