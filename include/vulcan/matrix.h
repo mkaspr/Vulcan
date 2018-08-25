@@ -103,9 +103,9 @@ class Matrix
     }
 
     VULCAN_HOST_DEVICE
-    inline int GetColums() const
+    inline int GetColumns() const
     {
-      return M;
+      return N;
     }
 
     VULCAN_HOST_DEVICE
@@ -117,20 +117,15 @@ class Matrix
     VULCAN_HOST_DEVICE
     inline T Norm() const
     {
-      return sqrt(SquaredNorm());
+      const float squared_normal = SquaredNorm();
+      VULCAN_DEBUG(squared_normal > 0);
+      return sqrt(squared_normal);
     }
 
     VULCAN_HOST_DEVICE
     inline T SquaredNorm() const
     {
-      T norm = T(0);
-
-      for (int i = 0; i < M * N; ++i)
-      {
-        norm += data_[i] * data_[i];
-      }
-
-      return norm;
+      return this->Dot(*this);
     }
 
     VULCAN_HOST_DEVICE
