@@ -30,6 +30,16 @@ class Buffer
       cudaFree(data_);
     }
 
+    inline const T* GetData() const
+    {
+      return data_;
+    }
+
+    inline T* GetData()
+    {
+      return data_;
+    }
+
     inline size_t GetSize() const
     {
       return size_;
@@ -62,28 +72,32 @@ class Buffer
       }
     }
 
-    void CopyToDevice(T* buffer)
+    void CopyFromDevice(T* buffer)
+    {
+      const size_t bytes = sizeof(T) * size_;
+      const cudaMemcpyKind kind = cudaMemcpyDeviceToDevice;
+      CUDA_DEBUG(cudaMemcpy(data_, buffer, bytes, kind));
+    }
+
+    void CopyToDevice(T* buffer) const
     {
       const size_t bytes = sizeof(T) * size_;
       const cudaMemcpyKind kind = cudaMemcpyDeviceToDevice;
       CUDA_DEBUG(cudaMemcpy(buffer, data_, bytes, kind));
     }
 
-    void CopyToHost(T* buffer)
+    void CopyFromHost(const T* buffer)
+    {
+      const size_t bytes = sizeof(T) * size_;
+      const cudaMemcpyKind kind = cudaMemcpyHostToDevice;
+      CUDA_DEBUG(cudaMemcpy(data_, buffer, bytes, kind));
+    }
+
+    void CopyToHost(T* buffer) const
     {
       const size_t bytes = sizeof(T) * size_;
       const cudaMemcpyKind kind = cudaMemcpyDeviceToHost;
       CUDA_DEBUG(cudaMemcpy(buffer, data_, bytes, kind));
-    }
-
-    inline const T* GetData() const
-    {
-      return data_;
-    }
-
-    inline T* GetData()
-    {
-      return data_;
     }
 
   private:

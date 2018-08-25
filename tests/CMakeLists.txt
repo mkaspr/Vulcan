@@ -15,7 +15,6 @@ list(APPEND REQUIRED_LIBRARIES pthread)
 
 set(CPP_SOURCES
   block_test.cpp
-  buffer_test.cpp
   device_test.cpp
   exception_test.cpp
   exporter_test.cpp
@@ -35,10 +34,11 @@ set(CPP_SOURCES
 # define cuda sources
 
 set(CUDA_SOURCES
-  util_test.cu
+  buffer_test.cu
   integrator_test.cu
   sampler_test.cu
   tracer_test.cu
+  util_test.cu
 )
 
 # build executable
