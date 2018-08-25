@@ -15,14 +15,15 @@ namespace
 
 template <bool translation_enabled>
 VULCAN_DEVICE
-inline void Evaluate(const Transform& Tmc, const float* keyframe_depths,
-    const Vector3f* keyframe_normals, const Projection& keyframe_projection,
-    int keyframe_width, int keyframe_height, const float* frame_depths,
+inline void Evaluate(int frame_x, int frame_y, const Transform& Tmc,
+    const float* keyframe_depths, const Vector3f* keyframe_normals,
+    const Projection& keyframe_projection, int keyframe_width,
+    int keyframe_height, const float* frame_depths,
     const Vector3f* frame_normals, const Projection& frame_projection,
     int frame_width, int frame_height, float* residual, Vector6f* jacobian)
 {
-  const int frame_x = blockIdx.x * blockDim.x + threadIdx.x;
-  const int frame_y = blockIdx.y * blockDim.y + threadIdx.y;
+  VULCAN_DEBUG(frame_y >= 0 && frame_x < frame_width);
+  VULCAN_DEBUG(frame_y >= 0 && frame_y < frame_height);
 
   if (residual) *residual = 0;
   if (jacobian) *jacobian = Vector6f::Zeros();
@@ -87,6 +88,28 @@ inline void Evaluate(const Transform& Tmc, const float* keyframe_depths,
   }
 }
 
+VULCAN_GLOBAL
+void ComputeResidualsKernel(const Transform Tmc, const float* keyframe_depths,
+    const Vector3f* keyframe_normals, const Projection keyframe_projection,
+    int keyframe_width, int keyframe_height, const float* frame_depths,
+    const Vector3f* frame_normals, const Projection frame_projection,
+    int frame_width, int frame_height, float* residuals)
+{
+  float residual;
+  const int frame_x = blockIdx.x * blockDim.x + threadIdx.x;
+  const int frame_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (frame_x < frame_width && frame_y < frame_height)
+  {
+    Evaluate<false>(frame_x, frame_y, Tmc, keyframe_depths, keyframe_normals,
+        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+        frame_normals, frame_projection, frame_width, frame_height, &residual,
+        nullptr);
+
+    residuals[frame_y * frame_width + frame_x] = residual;
+  }
+}
+
 template <bool translation_enabled>
 VULCAN_GLOBAL
 void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
@@ -99,13 +122,19 @@ void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
   VULCAN_SHARED float buffer2[256];
   VULCAN_SHARED float buffer3[256];
 
-  float residual;
-  Vector6f jacobian;
+  float residual = 0;
+  Vector6f jacobian = Vector6f::Zeros();
 
-  Evaluate<translation_enabled>(Tmc, keyframe_depths, keyframe_normals,
-      keyframe_projection, keyframe_width, keyframe_height, frame_depths,
-      frame_normals, frame_projection, frame_width, frame_height,
-      &residual, &jacobian);
+  const int frame_x = blockIdx.x * blockDim.x + threadIdx.x;
+  const int frame_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (frame_x < frame_width && frame_y < frame_height)
+  {
+    Evaluate<translation_enabled>(frame_x, frame_y, Tmc, keyframe_depths,
+        keyframe_normals, keyframe_projection, keyframe_width, keyframe_height,
+        frame_depths, frame_normals, frame_projection, frame_width,
+        frame_height, &residual, &jacobian);
+  }
 
   const int thread = threadIdx.y * blockDim.x + threadIdx.x;
   const int parameter_count = translation_enabled ? 6 : 3;
@@ -209,6 +238,33 @@ void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
 }
 
 } // namespace
+
+void DepthTracker::ComputeResiduals(const Frame& frame,
+    Buffer<float>& residuals) const
+{
+  residuals.Resize(GetResidualCount(frame));
+  const int frame_width = frame.depth_image->GetWidth();
+  const int frame_height = frame.depth_image->GetHeight();
+  const int keyframe_width = keyframe_->depth_image->GetWidth();
+  const int keyframe_height = keyframe_->depth_image->GetHeight();
+  const float* frame_depths = frame.depth_image->GetData();
+  const float* keyframe_depths = keyframe_->depth_image->GetData();
+  const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Vector3f* frame_normals = frame.normal_image->GetData();
+  const Projection& frame_projection = frame.projection;
+  const Projection& keyframe_projection = keyframe_->projection;
+  const Transform Tmc = keyframe_->Tcw * frame.Tcw.Inverse();
+  float* residuals_ptr = residuals.GetData();
+
+  const dim3 threads(16, 16);
+  const dim3 total(frame_width, frame_height);
+  const dim3 blocks = GetKernelBlocks(total, threads);
+
+  CUDA_LAUNCH(ComputeResidualsKernel, blocks, threads, 0, 0, Tmc,
+      keyframe_depths, keyframe_normals, keyframe_projection, keyframe_width,
+      keyframe_height, frame_depths, frame_normals, frame_projection,
+      frame_width, frame_height, residuals_ptr);
+}
 
 void DepthTracker::ComputeSystem(const Frame& frame)
 {

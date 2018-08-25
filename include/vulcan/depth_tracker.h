@@ -13,6 +13,8 @@ class DepthTracker : public Tracker
 
     virtual ~DepthTracker();
 
+    void ComputeResiduals(const Frame& frame, Buffer<float>& residuals) const;
+
   protected:
 
     int GetResidualCount(const Frame& frame) const override;
