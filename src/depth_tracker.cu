@@ -14,23 +14,18 @@ namespace
 {
 
 template <bool translation_enabled>
-VULCAN_GLOBAL
-void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
-    const Vector3f* keyframe_normals, const Projection keyframe_projection,
+VULCAN_DEVICE
+inline void Evaluate(const Transform& Tmc, const float* keyframe_depths,
+    const Vector3f* keyframe_normals, const Projection& keyframe_projection,
     int keyframe_width, int keyframe_height, const float* frame_depths,
-    const Vector3f* frame_normals, const Projection frame_projection,
-    int frame_width, int frame_height, float* hessian, float* gradient)
+    const Vector3f* frame_normals, const Projection& frame_projection,
+    int frame_width, int frame_height, float& residual, Vector6f& jacobian)
 {
-  VULCAN_SHARED float buffer1[256];
-  VULCAN_SHARED float buffer2[256];
-  VULCAN_SHARED float buffer3[256];
-
   const int frame_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int frame_y = blockIdx.y * blockDim.y + threadIdx.y;
-  const int thread = threadIdx.y * blockDim.x + threadIdx.x;
 
-  float residual = 0;
-  Vector6f dfdx = Vector6f::Zeros();
+  residual = 0;
+  jacobian = Vector6f::Zeros();
 
   if (frame_x < frame_width && frame_y < frame_height)
   {
@@ -69,15 +64,15 @@ void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
             {
               residual = delta.Dot(keyframe_normal);
 
-              dfdx[0] = keyframe_normal[2] * Xcp[1] - keyframe_normal[1] * Xcp[2];
-              dfdx[1] = keyframe_normal[0] * Xcp[2] - keyframe_normal[2] * Xcp[0];
-              dfdx[2] = keyframe_normal[1] * Xcp[0] - keyframe_normal[0] * Xcp[1];
+              jacobian[0] = keyframe_normal[2] * Xcp[1] - keyframe_normal[1] * Xcp[2];
+              jacobian[1] = keyframe_normal[0] * Xcp[2] - keyframe_normal[2] * Xcp[0];
+              jacobian[2] = keyframe_normal[1] * Xcp[0] - keyframe_normal[0] * Xcp[1];
 
               if (translation_enabled)
               {
-                dfdx[3] = keyframe_normal[0];
-                dfdx[4] = keyframe_normal[1];
-                dfdx[5] = keyframe_normal[2];
+                jacobian[3] = keyframe_normal[0];
+                jacobian[4] = keyframe_normal[1];
+                jacobian[5] = keyframe_normal[2];
               }
             }
           }
@@ -85,14 +80,36 @@ void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
       }
     }
   }
+}
 
+template <bool translation_enabled>
+VULCAN_GLOBAL
+void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
+    const Vector3f* keyframe_normals, const Projection keyframe_projection,
+    int keyframe_width, int keyframe_height, const float* frame_depths,
+    const Vector3f* frame_normals, const Projection frame_projection,
+    int frame_width, int frame_height, float* hessian, float* gradient)
+{
+  VULCAN_SHARED float buffer1[256];
+  VULCAN_SHARED float buffer2[256];
+  VULCAN_SHARED float buffer3[256];
+
+  float residual;
+  Vector6f jacobian;
+
+  Evaluate<translation_enabled>(Tmc, keyframe_depths, keyframe_normals,
+      keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+      frame_normals, frame_projection, frame_width, frame_height, residual,
+      jacobian);
+
+  const int thread = threadIdx.y * blockDim.x + threadIdx.x;
   const int parameter_count = translation_enabled ? 6 : 3;
 
   for (int i = 0; i < parameter_count; i += 3)
   {
-    buffer1[thread] = dfdx[i + 0] * residual;
-    buffer2[thread] = dfdx[i + 1] * residual;
-    buffer3[thread] = dfdx[i + 2] * residual;
+    buffer1[thread] = jacobian[i + 0] * residual;
+    buffer2[thread] = jacobian[i + 1] * residual;
+    buffer3[thread] = jacobian[i + 2] * residual;
 
     __syncthreads();
 
@@ -138,7 +155,7 @@ void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
   {
     for (int c = 0; c <= r; c++, counter++)
     {
-      local_hessian[counter] = dfdx[r] * dfdx[c];
+      local_hessian[counter] = jacobian[r] * jacobian[c];
     }
   }
 
