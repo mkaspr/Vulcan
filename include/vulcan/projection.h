@@ -14,7 +14,7 @@ class Projection
 
     VULCAN_HOST_DEVICE
     Projection() :
-      focal_length_(320, 320),
+      focal_length_(500, 500),
       center_point_(320, 240)
     {
     }

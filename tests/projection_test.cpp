@@ -9,8 +9,8 @@ namespace testing
 TEST(Projection, Constructor)
 {
   Projection projection;
-  ASSERT_FLOAT_EQ(320, projection.GetFocalLength()[0]);
-  ASSERT_FLOAT_EQ(320, projection.GetFocalLength()[1]);
+  ASSERT_FLOAT_EQ(500, projection.GetFocalLength()[0]);
+  ASSERT_FLOAT_EQ(500, projection.GetFocalLength()[1]);
   ASSERT_FLOAT_EQ(320, projection.GetCenterPoint()[0]);
   ASSERT_FLOAT_EQ(240, projection.GetCenterPoint()[1]);
 }
@@ -103,6 +103,7 @@ TEST(Projection, Unproject)
   Vector3f found, expected;
   Matrix3f Kinv;
   Vector2f uv;
+  float depth;
 
   projection.SetFocalLength(325, 315);
   projection.SetCenterPoint(325, 235);
@@ -126,6 +127,20 @@ TEST(Projection, Unproject)
   ASSERT_FLOAT_EQ(expected[1], found[1]);
   ASSERT_FLOAT_EQ(expected[2], found[2]);
 
+  depth = 17.4;
+  uv = projection.GetCenterPoint();
+  expected = Vector3f(0, 0, depth);
+
+  found = projection.Unproject(uv[0], uv[1], depth);
+  ASSERT_FLOAT_EQ(expected[0], found[0]);
+  ASSERT_FLOAT_EQ(expected[1], found[1]);
+  ASSERT_FLOAT_EQ(expected[2], found[2]);
+
+  found = projection.Unproject(uv, depth);
+  ASSERT_FLOAT_EQ(expected[0], found[0]);
+  ASSERT_FLOAT_EQ(expected[1], found[1]);
+  ASSERT_FLOAT_EQ(expected[2], found[2]);
+
   uv = Vector2f(42.52, 230.71);
   expected = Kinv * Vector3f(uv, 1);
 
@@ -138,6 +153,20 @@ TEST(Projection, Unproject)
   ASSERT_FLOAT_EQ(expected[0], found[0]);
   ASSERT_FLOAT_EQ(expected[1], found[1]);
   ASSERT_FLOAT_EQ(expected[2], found[2]);
+
+  depth = 17.4;
+  uv = Vector2f(42.52, 230.71);
+  expected = depth * Kinv * Vector3f(uv, 1);
+
+  found = projection.Unproject(uv[0], uv[1], depth);
+  ASSERT_NEAR(expected[0], found[0], 1E-6);
+  ASSERT_NEAR(expected[1], found[1], 1E-6);
+  ASSERT_NEAR(expected[2], found[2], 1E-6);
+
+  found = projection.Unproject(uv, depth);
+  ASSERT_NEAR(expected[0], found[0], 1E-6);
+  ASSERT_NEAR(expected[1], found[1], 1E-6);
+  ASSERT_NEAR(expected[2], found[2], 1E-6);
 }
 
 } // namespace testing
