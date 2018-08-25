@@ -29,6 +29,7 @@ set(CPP_SOURCES
   transform_test.cpp
   types_test.cpp
   volume_test.cpp
+  voxel_test.cpp
 )
 
 # define cuda sources
