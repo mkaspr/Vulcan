@@ -19,13 +19,13 @@ inline void Evaluate(const Transform& Tmc, const float* keyframe_depths,
     const Vector3f* keyframe_normals, const Projection& keyframe_projection,
     int keyframe_width, int keyframe_height, const float* frame_depths,
     const Vector3f* frame_normals, const Projection& frame_projection,
-    int frame_width, int frame_height, float& residual, Vector6f& jacobian)
+    int frame_width, int frame_height, float* residual, Vector6f* jacobian)
 {
   const int frame_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int frame_y = blockIdx.y * blockDim.y + threadIdx.y;
 
-  residual = 0;
-  jacobian = Vector6f::Zeros();
+  if (residual) *residual = 0;
+  if (jacobian) *jacobian = Vector6f::Zeros();
 
   if (frame_x < frame_width && frame_y < frame_height)
   {
@@ -62,17 +62,22 @@ inline void Evaluate(const Transform& Tmc, const float* keyframe_depths,
 
             if (delta.SquaredNorm() < 0.05)
             {
-              residual = delta.Dot(keyframe_normal);
+              if (residual) *residual = delta.Dot(keyframe_normal);
 
-              jacobian[0] = keyframe_normal[2] * Xcp[1] - keyframe_normal[1] * Xcp[2];
-              jacobian[1] = keyframe_normal[0] * Xcp[2] - keyframe_normal[2] * Xcp[0];
-              jacobian[2] = keyframe_normal[1] * Xcp[0] - keyframe_normal[0] * Xcp[1];
-
-              if (translation_enabled)
+              if (jacobian)
               {
-                jacobian[3] = keyframe_normal[0];
-                jacobian[4] = keyframe_normal[1];
-                jacobian[5] = keyframe_normal[2];
+                Vector6f& J = *jacobian;
+
+                J[0] = keyframe_normal[2] * Xcp[1] - keyframe_normal[1] * Xcp[2];
+                J[1] = keyframe_normal[0] * Xcp[2] - keyframe_normal[2] * Xcp[0];
+                J[2] = keyframe_normal[1] * Xcp[0] - keyframe_normal[0] * Xcp[1];
+
+                if (translation_enabled)
+                {
+                  J[3] = keyframe_normal[0];
+                  J[4] = keyframe_normal[1];
+                  J[5] = keyframe_normal[2];
+                }
               }
             }
           }
@@ -99,8 +104,8 @@ void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
 
   Evaluate<translation_enabled>(Tmc, keyframe_depths, keyframe_normals,
       keyframe_projection, keyframe_width, keyframe_height, frame_depths,
-      frame_normals, frame_projection, frame_width, frame_height, residual,
-      jacobian);
+      frame_normals, frame_projection, frame_width, frame_height,
+      &residual, &jacobian);
 
   const int thread = threadIdx.y * blockDim.x + threadIdx.x;
   const int parameter_count = translation_enabled ? 6 : 3;
