@@ -78,6 +78,7 @@ TEST(Image, GetGradients)
     thrust::copy(src, src + gy.GetTotal(), dst);
   }
 
+  // direct comparison with opencv sobel filter
 
   cv::Mat expected_gx, expected_gy;
   cv::Sobel(h_image, expected_gx, CV_32FC1, 1, 0, 3, 1, 0);
@@ -93,6 +94,8 @@ TEST(Image, GetGradients)
       ASSERT_NEAR(expected_gy.at<float>(y, x), h_gy.at<float>(y, x), 1E-6);
     }
   }
+
+  // comparison with actual finite differencing
 
   const float d = 1E-3f;
 

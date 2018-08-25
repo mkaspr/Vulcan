@@ -49,10 +49,6 @@ class Tracker
 
     void ComputeOperands(const Frame& frame);
 
-    virtual void ComputeResidual(const Frame& frame) = 0;
-
-    virtual void ComputeJacobian(const Frame& frame) = 0;
-
     virtual void ComputeSystem(const Frame& frame) = 0;
 
     void ComputeHessian();

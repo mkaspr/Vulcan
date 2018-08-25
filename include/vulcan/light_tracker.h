@@ -23,10 +23,6 @@ class LightTracker : public Tracker
 
     void BeginSolve(const Frame& frame) override;
 
-    void ComputeResidual(const Frame& frame) override;
-
-    void ComputeJacobian(const Frame& frame) override;
-
     int GetResidualCount(const Frame &frame) const override;
 
     void ComputeSystem(const Frame& frame) override;
