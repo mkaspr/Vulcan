@@ -110,6 +110,9 @@ class Image
     }
 
     VULCAN_HOST
+    void GetGradients(Image& gx, Image& gy) const;
+
+    VULCAN_HOST
     void Downsample(Image& image, bool nearest) const;
 
   protected:

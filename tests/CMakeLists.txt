@@ -19,9 +19,7 @@ set(CPP_SOURCES
   exception_test.cpp
   exporter_test.cpp
   extractor_test.cpp
-  frame_test.cpp
   hash_test.cpp
-  image_test.cpp
   matrix_test.cpp
   mesh_test.cpp
   projection_test.cpp
@@ -36,6 +34,8 @@ set(CPP_SOURCES
 
 set(CUDA_SOURCES
   buffer_test.cu
+  frame_test.cu
+  image_test.cu
   integrator_test.cu
   sampler_test.cu
   tracer_test.cu

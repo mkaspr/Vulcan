@@ -37,73 +37,6 @@ void ComputeIntensitiesKernel(int total, const Vector3f* colors,
   }
 }
 
-template <int BLOCK_DIM>
-VULCAN_GLOBAL
-void ComputeGradientsKernel(int width, int height, const float* intensities,
-    float* gradient_x, float* gradient_y)
-{
-  const int buffer_dim = BLOCK_DIM + 2;
-  const int buffer_size = buffer_dim * buffer_dim;
-  VULCAN_SHARED float buffer[buffer_size];
-  const int x = blockIdx.x * blockDim.x + threadIdx.x;
-  const int y = blockIdx.y * blockDim.y + threadIdx.y;
-
-  const int block_size = blockDim.x * blockDim.y;
-  int sindex = threadIdx.y * blockDim.x + threadIdx.x;
-
-  do
-  {
-    float intensity = 0;
-    const int gx = (blockIdx.x * blockDim.x - 1) + (sindex % buffer_dim);
-    const int gy = (blockIdx.y * blockDim.y - 1) + (sindex / buffer_dim);
-
-    if (gx >= 0 && gx < width && gy >= 0 && gy < height)
-    {
-      intensity = intensities[gy * width + gx];
-    }
-
-    buffer[sindex] = intensity;
-    sindex += block_size;
-  }
-  while (sindex < buffer_size);
-
-  __syncthreads();
-
-  if (x < width && y < height)
-  {
-    float gx = 0;
-    float gy = 0;
-
-    if (x > 0 && x < width - 1 && y > 0 && y < height - 1)
-    {
-      const int tx = threadIdx.x;
-      const int ty = threadIdx.y;
-
-      const float i00 = 0.125f * buffer[(ty + 0) * buffer_dim + (tx + 0)];
-      const float i01 = 0.250f * buffer[(ty + 0) * buffer_dim + (tx + 1)];
-      const float i02 = 0.125f * buffer[(ty + 0) * buffer_dim + (tx + 2)];
-
-      const float i10 = 0.250f * buffer[(ty + 1) * buffer_dim + (tx + 0)];
-      const float i12 = 0.250f * buffer[(ty + 1) * buffer_dim + (tx + 2)];
-
-      const float i20 = 0.125f * buffer[(ty + 2) * buffer_dim + (tx + 0)];
-      const float i21 = 0.250f * buffer[(ty + 2) * buffer_dim + (tx + 1)];
-      const float i22 = 0.125f * buffer[(ty + 2) * buffer_dim + (tx + 2)];
-
-      // gx = (i00 + i10 + i20) - (i02 + i12 + i22);
-      // gy = (i00 + i01 + i02) - (i20 + i21 + i22);
-
-      // TODO: determine why derivatives are negated
-      gx = (i02 + i12 + i22) - (i00 + i10 + i20);
-      gy = (i20 + i21 + i22) - (i00 + i01 + i02);
-    }
-
-    const int index = y * width + x;
-    gradient_x[index] = gx;
-    gradient_y[index] = gy;
-  }
-}
-
 VULCAN_DEVICE
 float Sample(int w, int h, const float* values, float u, float v)
 {
@@ -502,21 +435,7 @@ void ColorTracker::ComputeFrameIntensities(const Frame& frame)
 
 void ColorTracker::ComputeFrameGradients(const Frame& frame)
 {
-  const int width = frame.depth_image->GetWidth();
-  const int height = frame.depth_image->GetHeight();
-  frame_gradient_x_.Resize(width, height);
-  frame_gradient_y_.Resize(width, height);
-
-  const float* intensities = frame_intensities_.GetData();
-  float* gradient_x = frame_gradient_x_.GetData();
-  float* gradient_y = frame_gradient_y_.GetData();
-
-  const dim3 threads(16, 16);
-  const dim3 total(width, height);
-  const dim3 blocks = GetKernelBlocks(total, threads);
-
-  CUDA_LAUNCH(ComputeGradientsKernel<16>, blocks, threads, 0, 0, width, height,
-      intensities, gradient_x, gradient_y);
+  frame_intensities_.GetGradients(frame_gradient_x_, frame_gradient_y_);
 }
 
 void ColorTracker::ComputeResidual(const Frame& frame)
