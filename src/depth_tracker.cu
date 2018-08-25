@@ -197,7 +197,8 @@ void ComputeSystemKernel(const Transform Tmc, const float* keyframe_depths,
 
         if (keyframe_depth > 0)
         {
-          const Vector3f frame_normal = frame_normals[frame_index];
+          Vector3f frame_normal = frame_normals[frame_index];
+          frame_normal = Vector3f(Tmc * Vector4f(frame_normal, 0));
           const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
 
           if (keyframe_normal.SquaredNorm() > 0 &&

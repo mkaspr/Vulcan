@@ -14,7 +14,11 @@ class PyramidTracker
 
     PyramidTracker();
 
+    PyramidTracker(std::shared_ptr<Tracker> tracker);
+
     virtual ~PyramidTracker();
+
+    std::shared_ptr<const Tracker> GetTracker() const;
 
     std::shared_ptr<const Frame> GetKeyframe() const;
 
@@ -24,7 +28,7 @@ class PyramidTracker
 
   protected:
 
-    std::unique_ptr<Tracker> tracker_;
+    std::shared_ptr<Tracker> tracker_;
 
     std::shared_ptr<const Frame> keyframe_;
 

@@ -2,13 +2,22 @@
 #include <vulcan/frame.h>
 #include <vulcan/color_tracker.h>
 #include <vulcan/depth_tracker.h>
+#include <vulcan/light_tracker.h>
 
 namespace vulcan
 {
 
 template<typename Tracker>
 PyramidTracker<Tracker>::PyramidTracker() :
-  tracker_(std::unique_ptr<Tracker>(new Tracker())),
+  tracker_(std::shared_ptr<Tracker>(new Tracker())),
+  half_keyframe_(std::make_shared<Frame>()),
+  quarter_keyframe_(std::make_shared<Frame>())
+{
+}
+
+template<typename Tracker>
+PyramidTracker<Tracker>::PyramidTracker(std::shared_ptr<Tracker> tracker) :
+  tracker_(tracker),
   half_keyframe_(std::make_shared<Frame>()),
   quarter_keyframe_(std::make_shared<Frame>())
 {
@@ -17,6 +26,12 @@ PyramidTracker<Tracker>::PyramidTracker() :
 template<typename Tracker>
 PyramidTracker<Tracker>::~PyramidTracker()
 {
+}
+
+template<typename Tracker>
+std::shared_ptr<const Tracker> PyramidTracker<Tracker>::GetTracker() const
+{
+  return tracker_;
 }
 
 template<typename Tracker>
@@ -65,5 +80,6 @@ void PyramidTracker<Tracker>::Track(Frame& frame)
 
 template class PyramidTracker<ColorTracker>;
 template class PyramidTracker<DepthTracker>;
+template class PyramidTracker<LightTracker>;
 
 } // namespace vulcan

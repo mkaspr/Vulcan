@@ -187,6 +187,8 @@ void Tracker::ComputeUpdate(Frame& frame)
   hessian2.triangularView<Eigen::StrictlyUpper>() = hessian2.transpose();
   solver.compute(hessian2);
 
+  std::cout << "Hessian:" << std::endl << hessian2 << std::endl << std::endl;
+
   VULCAN_DEBUG(solver.info() == Eigen::Success);
 
   update = -solver.solve(gradient);

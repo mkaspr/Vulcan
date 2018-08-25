@@ -1,6 +1,7 @@
 #include <vulcan/color_tracker.h>
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
+#include <thrust/host_vector.h>
 #include <vulcan/device.h>
 #include <vulcan/frame.h>
 #include <vulcan/projection.h>
@@ -78,19 +79,23 @@ void ComputeGradientsKernel(int width, int height, const float* intensities,
       const int tx = threadIdx.x;
       const int ty = threadIdx.y;
 
-      const float i00 = 0.25f * buffer[(ty + 0) * buffer_dim + (tx + 0)];
-      const float i01 = 0.50f * buffer[(ty + 0) * buffer_dim + (tx + 1)];
-      const float i02 = 0.25f * buffer[(ty + 0) * buffer_dim + (tx + 2)];
+      const float i00 = 0.125f * buffer[(ty + 0) * buffer_dim + (tx + 0)];
+      const float i01 = 0.250f * buffer[(ty + 0) * buffer_dim + (tx + 1)];
+      const float i02 = 0.125f * buffer[(ty + 0) * buffer_dim + (tx + 2)];
 
-      const float i10 = 0.50f * buffer[(ty + 1) * buffer_dim + (tx + 0)];
-      const float i12 = 0.50f * buffer[(ty + 1) * buffer_dim + (tx + 2)];
+      const float i10 = 0.250f * buffer[(ty + 1) * buffer_dim + (tx + 0)];
+      const float i12 = 0.250f * buffer[(ty + 1) * buffer_dim + (tx + 2)];
 
-      const float i20 = 0.25f * buffer[(ty + 2) * buffer_dim + (tx + 0)];
-      const float i21 = 0.50f * buffer[(ty + 2) * buffer_dim + (tx + 1)];
-      const float i22 = 0.25f * buffer[(ty + 2) * buffer_dim + (tx + 2)];
+      const float i20 = 0.125f * buffer[(ty + 2) * buffer_dim + (tx + 0)];
+      const float i21 = 0.250f * buffer[(ty + 2) * buffer_dim + (tx + 1)];
+      const float i22 = 0.125f * buffer[(ty + 2) * buffer_dim + (tx + 2)];
 
-      gx = (i00 + i10 + i20) - (i02 + i12 + i22);
-      gy = (i00 + i01 + i02) - (i20 + i21 + i22);
+      // gx = (i00 + i10 + i20) - (i02 + i12 + i22);
+      // gy = (i00 + i01 + i02) - (i20 + i21 + i22);
+
+      // TODO: determine why derivatives are negated
+      gx = (i02 + i12 + i22) - (i00 + i10 + i20);
+      gy = (i20 + i21 + i22) - (i00 + i01 + i02);
     }
 
     const int index = y * width + x;
@@ -112,17 +117,17 @@ float Sample(int w, int h, const float* values, float u, float v)
   const float v10 = values[(y + 1) * w + (x + 0)];
   const float v11 = values[(y + 1) * w + (x + 1)];
 
-  const float u1 = u - x;
-  const float u0 = 1 - u1;
-  const float v1 = v - y;
-  const float v0 = 1 - v1;
+  const float u1 = u - (x + 0.5f);
+  const float v1 = v - (y + 0.5f);
+  const float u0 = 1.0f - u1;
+  const float v0 = 1.0f - v1;
 
   const float w00 = v0 * u0;
   const float w01 = v0 * u1;
   const float w10 = v1 * u0;
   const float w11 = v1 * u1;
 
-  return w00 * v00 +  w01 * v01 +  w10 * v10 +  w11 * v11;
+  return (w00 * v00) + (w01 * v01) + (w10 * v10) + (w11 * v11);
 }
 
 VULCAN_GLOBAL
@@ -237,15 +242,15 @@ void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
             const float gy = Sample(frame_width, frame_height, frame_gradient_y,
                 frame_uv[0], frame_uv[1]);
 
-            dfdx[0] = -fy*gy-y*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
-            dfdx[1] = fx*gx+x*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
+            dfdx[0] = -fy*gy-y*(fx*gx*x*1.0f/(z*z)+fy*gy*y*1.0f/(z*z));
+            dfdx[1] = fx*gx+x*(fx*gx*x*1.0f/(z*z)+fy*gy*y*1.0f/(z*z));
             dfdx[2] = (fy*gy*x)/z-(fx*gx*y)/z;
 
             if (translation_enabled)
             {
               dfdx[3] = (fx*gx)/z;
               dfdx[4] = (fy*gy)/z;
-              dfdx[5] = -fx*gx*x*1.0/(z*z)-fy*gy*y*1.0/(z*z);
+              dfdx[5] = -fx*gx*x*1.0f/(z*z)-fy*gy*y*1.0f/(z*z);
             }
           }
         }
@@ -275,7 +280,7 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
     const Vector3f* frame_normals, const float* frame_intensities,
     const float* frame_gradient_x, const float* frame_gradient_y,
     const Projection frame_projection, int frame_width, int frame_height,
-    float* hessian, float* gradient)
+    float* hessian, float* gradient, float* residuals)
 {
   VULCAN_SHARED float buffer1[256];
   VULCAN_SHARED float buffer2[256];
@@ -309,10 +314,11 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
         const int frame_index = frame_y * frame_width + frame_x;
         const float frame_depth = frame_depths[frame_index];
 
-        if (fabsf(frame_depth - Xcp[2]) < 0.01)
+        if (fabsf(frame_depth - Xcp[2]) < 0.1)
         {
           const Vector3f frame_normal = frame_normals[frame_index];
-          const Vector3f keyframe_normal = keyframe_normals[keyframe_index];
+          Vector3f keyframe_normal = keyframe_normals[keyframe_index];
+          keyframe_normal = Vector3f(Tcm * Vector4f(keyframe_normal, 0));
 
           if (keyframe_normal.SquaredNorm() > 0 &&
               frame_normal.Dot(keyframe_normal) > 0.5f)
@@ -322,7 +328,9 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
             const float Ic = Sample(frame_width, frame_height,
                 frame_intensities, frame_uv[0], frame_uv[1]);
 
+            // TODO: return
             residual = Ic - Im;
+            // residual = Ic;
 
             const float x = Xmp[0];
             const float y = Xmp[1];
@@ -337,20 +345,23 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
             const float gy = Sample(frame_width, frame_height, frame_gradient_y,
                 frame_uv[0], frame_uv[1]);
 
-            dfdx[0] = -fy*gy-y*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
-            dfdx[1] = fx*gx+x*(fx*gx*x*1.0/(z*z)+fy*gy*y*1.0/(z*z));
+
+            dfdx[0] = -fy*gy-y*(fx*gx*x*1/(z*z)+fy*gy*y*1/(z*z));
+            dfdx[1] = fx*gx+x*(fx*gx*x*1/(z*z)+fy*gy*y*1/(z*z));
             dfdx[2] = (fy*gy*x)/z-(fx*gx*y)/z;
 
             if (translation_enabled)
             {
               dfdx[3] = (fx*gx)/z;
               dfdx[4] = (fy*gy)/z;
-              dfdx[5] = -fx*gx*x*1.0/(z*z)-fy*gy*y*1.0/(z*z);
+              dfdx[5] = -fx*gx*x*1/(z*z)-fy*gy*y*1/(z*z);
             }
           }
         }
       }
     }
+
+    residuals[keyframe_index] = residual; // TODO: remove
   }
 
   const int parameter_count = translation_enabled ? 6 : 3;
@@ -594,6 +605,7 @@ void ColorTracker::ComputeSystem(const Frame& frame)
   const Transform Tcm = frame.Tcw * keyframe_->Tcw.Inverse();
   float* hessian = hessian_.GetData();
   float* gradient = gradient_.GetData();
+  float* residuals = residuals_.GetData();
 
   thrust::device_ptr<float> dh(hessian);
   thrust::device_ptr<float> dg(gradient);
@@ -610,7 +622,7 @@ void ColorTracker::ComputeSystem(const Frame& frame)
         keyframe_depths, keyframe_normals, keyframe_intensities,
         keyframe_projection, keyframe_width, keyframe_height, frame_depths,
         frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, hessian, gradient);
+        frame_projection, frame_width, frame_height, hessian, gradient, residuals);
   }
   else
   {
@@ -618,8 +630,14 @@ void ColorTracker::ComputeSystem(const Frame& frame)
         keyframe_depths, keyframe_normals, keyframe_intensities,
         keyframe_projection, keyframe_width, keyframe_height, frame_depths,
         frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, hessian, gradient);
+        frame_projection, frame_width, frame_height, hessian, gradient, residuals);
   }
+
+  thrust::device_ptr<const float> rptr(residuals);
+  thrust::host_vector<float> hptr(rptr, rptr + residuals_.GetSize());
+  cv::Mat image(keyframe_height, keyframe_width, CV_32FC1, hptr.data());
+  image.convertTo(image, CV_8UC1, 255);
+  cv::imwrite("residuals.png", image);
 
   // ComputeResidual(frame);
   // ComputeJacobian(frame);

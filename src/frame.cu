@@ -48,7 +48,7 @@ void ComputeNormalsKernel(const float* depths, const Projection projection,
 
       uv[0] = (x + 0) + 0.5f;
       uv[1] = (y + 0) + 0.5f;
-      const Vector3f z0 = projection.Unproject(uv) * depth;
+      const Vector3f z0 = projection.Unproject(uv, depth);
 
       Vector3f x0;
       d = shared[(threadIdx.y + pad) * resolution + (threadIdx.x + 0)];
