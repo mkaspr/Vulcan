@@ -284,7 +284,7 @@ TEST(Tracer, ComputePoints)
   thrust::device_ptr<Vector3f> color_ptr(color_image->GetData());
   thrust::copy(expected_colors.begin(), expected_colors.end(), color_ptr);
 
-  frame.Tcw = Tcw;
+  frame.Twc = Twc;
   frame.projection = projection;
   frame.depth_image = depth_image;
   frame.color_image = color_image;
@@ -461,7 +461,7 @@ TEST(Tracer, ComputeNormals)
   thrust::device_ptr<Vector3f> normal_ptr(normal_image->GetData());
   thrust::copy(expected_normals.begin(), expected_normals.end(), normal_ptr);
 
-  frame.Tcw = Tcw;
+  frame.Twc = Twc;
   frame.projection = projection;
   frame.depth_image = depth_image;
   frame.color_image = color_image;

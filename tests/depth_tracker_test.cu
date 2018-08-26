@@ -15,7 +15,7 @@ inline void CreateKeyframe(Frame& frame)
   int h = 480;
 
   Transform transform;
-  frame.Tcw = transform;
+  frame.Twc = transform;
 
   Projection projection;
   projection.SetFocalLength(547, 547);
@@ -74,7 +74,7 @@ inline void CreateFrame(Frame& frame)
   transform = Transform::Translate(0.001, -0.002, 0.003) *
       Transform::Rotate(0.9998719, 0.0085884, -0.0104268, 0.0085884);
 
-  frame.Tcw = transform;
+  frame.Twc = transform;
 
   Projection projection;
   projection.SetFocalLength(547, 547);
@@ -125,12 +125,13 @@ inline void CreateFrame(Frame& frame)
   frame.ComputeNormals();
 }
 
-inline void ComputeResiduals(const Transform& Tmc, const float* keyframe_depths,
-    const Vector3f* keyframe_normals, const Projection& keyframe_projection,
-    int keyframe_width, int keyframe_height, const float* frame_depths,
+inline void ComputeResiduals(const Transform& Twm, const Transform& Twc,
+    const float* keyframe_depths, const Vector3f* keyframe_normals,
+    const Projection& keyframe_projection, int keyframe_width,
+    int keyframe_height, const float* frame_depths,
     const Vector3f* frame_normals, const Projection& frame_projection,
     int frame_width, int frame_height, std::vector<double>& residuals,
-    const Transform& base_Tmc)
+    const Transform& base_Twc)
 {
   for (int frame_y = 0; frame_y < frame_height; ++frame_y)
   {
@@ -163,8 +164,9 @@ inline void ComputeResiduals(const Transform& Tmc, const float* keyframe_depths,
         const double frame_v = frame_y + 0.5;
 
         const Vector3d Xcp = frame_depth * frame_Kinv * Vector3d(frame_u, frame_v, 1);
-        const Vector3d Xmp = Vector3d(Matrix4d(Tmc.GetMatrix()) * Vector4d(Xcp, 1));
-        const Vector3d base_Xmp = Vector3d(Matrix4d(base_Tmc.GetMatrix()) * Vector4d(Xcp, 1));
+        const Vector3d Xwp = Vector3d(Matrix4d(Twc.GetMatrix()) * Vector4d(Xcp, 1));
+        const Vector3d base_Xwp = Vector3d(Matrix4d(base_Twc.GetMatrix()) * Vector4d(Xcp, 1));
+        const Vector3d base_Xmp = Vector3d(Matrix4d(Twm.GetInverseMatrix()) * Vector4d(base_Xwp, 1));
 
         const Vector3d h_keyframe_uv = keyframe_K * base_Xmp;
         const Vector2d keyframe_uv = Vector2d(h_keyframe_uv) / h_keyframe_uv[2];
@@ -180,8 +182,10 @@ inline void ComputeResiduals(const Transform& Tmc, const float* keyframe_depths,
           if (keyframe_depth > 0)
           {
             const Vector3d frame_normal_x = Vector3d(frame_normals[frame_index]);
-            const Vector3d frame_normal = Vector3d(Vector3d(Matrix4d(Tmc.GetMatrix()) * Vector4d(frame_normal_x, 0)));
-            const Vector3d keyframe_normal = Vector3d(keyframe_normals[keyframe_index]);
+            const Vector3d frame_normal = Vector3d(Matrix4d(Twc.GetMatrix()) * Vector4d(frame_normal_x, 0));
+
+            const Vector3d keyframe_normal_x = Vector3d(keyframe_normals[keyframe_index]);
+            const Vector3d keyframe_normal = Vector3d(Matrix4d(Twm.GetMatrix()) * Vector4d(keyframe_normal_x, 0));
 
             if (keyframe_normal.SquaredNorm() > 0 &&
                 frame_normal.Dot(keyframe_normal) > 0.5)
@@ -190,8 +194,9 @@ inline void ComputeResiduals(const Transform& Tmc, const float* keyframe_depths,
               final_keyframe_uv[0] = keyframe_x + 0.5;
               final_keyframe_uv[1] = keyframe_y + 0.5;
               const Vector3d Ymp = keyframe_depth * keyframe_Kinv * Vector3d(final_keyframe_uv, 1);
-              const Vector3d delta = Vector3d(Xmp) - Vector3d(Ymp);
-              const Vector3d base_delta = Vector3d(base_Xmp) - Vector3d(Ymp);
+              const Vector3d Ywp = Vector3d(Matrix4d(Twm.GetMatrix()) * Vector4d(Ymp, 1));
+              const Vector3d delta = Xwp - Ywp;
+              const Vector3d base_delta = base_Xwp - Ywp;
 
               if (base_delta.SquaredNorm() < 0.05)
               {
@@ -206,7 +211,7 @@ inline void ComputeResiduals(const Transform& Tmc, const float* keyframe_depths,
 }
 
 inline void ComputeResiduals(const Frame& keyframe, const Frame& frame,
-    std::vector<double>& residuals, const Transform& base_transform)
+    std::vector<double>& residuals, const Transform& base_Twc)
 {
   const int frame_width = frame.depth_image->GetWidth();
   const int frame_height = frame.depth_image->GetHeight();
@@ -216,8 +221,8 @@ inline void ComputeResiduals(const Frame& keyframe, const Frame& frame,
   const int keyframe_total = keyframe_width * keyframe_height;
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe.projection;
-  const Transform Tmc = keyframe.Tcw * frame.Tcw.Inverse();
-  const Transform base_Tmc = keyframe.Tcw * base_transform.Inverse();
+  const Transform& Twm = keyframe.Twc;
+  const Transform& Twc = frame.Twc;
 
   thrust::device_ptr<const float> d_frame_depths(frame.depth_image->GetData());
   thrust::host_vector<float> h_frame_depths(d_frame_depths, d_frame_depths + frame_total);
@@ -237,13 +242,13 @@ inline void ComputeResiduals(const Frame& keyframe, const Frame& frame,
 
   residuals.resize(frame_total);
 
-  ComputeResiduals(Tmc, keyframe_depths, keyframe_normals, keyframe_projection,
-      keyframe_width, keyframe_height, frame_depths, frame_normals,
-      frame_projection, frame_width, frame_height, residuals, base_Tmc);
+  ComputeResiduals(Twm, Twc, keyframe_depths, keyframe_normals,
+      keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+      frame_normals, frame_projection, frame_width, frame_height, residuals,
+      base_Twc);
 }
 
-inline Transform GetTransform(const Vector6f& update,
-    const Transform& Tmw, const Transform& Tcw)
+inline Transform GetTransform(const Vector6f& update, const Transform& Twc)
 {
   Matrix4f Tinc;
 
@@ -267,12 +272,11 @@ inline Transform GetTransform(const Vector6f& update,
   Tinc(3, 2) = 0.0;
   Tinc(3, 3) = 1.0;
 
-  Transform Tmc = Tmw * Tcw.Inverse();
-  Matrix4f T = Tinc * Tmc.GetMatrix();
+  const Matrix4f M = Tinc * Twc.GetMatrix();
 
-  Vector3f x_axis(T(0, 0), T(1, 0), T(2, 0));
-  Vector3f y_axis(T(0, 1), T(1, 1), T(2, 1));
-  Vector3f z_axis(T(0, 2), T(1, 2), T(2, 2));
+  Vector3f x_axis(M(0, 0), M(1, 0), M(2, 0));
+  Vector3f y_axis(M(0, 1), M(1, 1), M(2, 1));
+  Vector3f z_axis(M(0, 2), M(1, 2), M(2, 2));
 
   x_axis.Normalize();
   y_axis.Normalize();
@@ -295,13 +299,11 @@ inline Transform GetTransform(const Vector6f& update,
 
   Vector3f t;
 
-  t[0] = T(0, 3);
-  t[1] = T(1, 3);
-  t[2] = T(2, 3);
+  t[0] = M(0, 3);
+  t[1] = M(1, 3);
+  t[2] = M(2, 3);
 
-  Tmc = Transform::Translate(t) * Transform::Rotate(R);
-  const Transform Twc = Tmw.Inverse() * Tmc;
-  return Twc.Inverse();
+  return Transform::Translate(t) * Transform::Rotate(R);
 }
 
 inline void ComputeJacobian(const Frame& keyframe, Frame& frame,
@@ -317,7 +319,7 @@ inline void ComputeJacobian(const Frame& keyframe, Frame& frame,
 
   std::vector<double> add_residuals;
   std::vector<double> sub_residuals;
-  const Transform base_transform = frame.Tcw;
+  const Transform base_Twc = frame.Twc;
   const int w = frame.depth_image->GetWidth();
   const int h = frame.depth_image->GetHeight();
   jacobian.resize(w * h);
@@ -327,12 +329,12 @@ inline void ComputeJacobian(const Frame& keyframe, Frame& frame,
     Vector6f transform = Vector6f::Zeros();
 
     transform[i] = +step_sizes[i];
-    frame.Tcw = GetTransform(transform, keyframe.Tcw, base_transform);
-    ComputeResiduals(keyframe, frame, add_residuals, base_transform);
+    frame.Twc = GetTransform(transform, base_Twc);
+    ComputeResiduals(keyframe, frame, add_residuals, base_Twc);
 
     transform[i] = -step_sizes[i];
-    frame.Tcw = GetTransform(transform, keyframe.Tcw, base_transform);
-    ComputeResiduals(keyframe, frame, sub_residuals, base_transform);
+    frame.Twc = GetTransform(transform, base_Twc);
+    ComputeResiduals(keyframe, frame, sub_residuals, base_Twc);
 
     for (size_t j = 0; j < jacobian.size(); ++j)
     {
@@ -411,7 +413,7 @@ TEST(DepthTracker, Residuals)
   found.resize(buffer.GetSize());
   buffer.CopyToHost(found.data());
 
-  ComputeResiduals(*keyframe, frame, expected, frame.Tcw);
+  ComputeResiduals(*keyframe, frame, expected, frame.Twc);
   ASSERT_EQ(expected.size(), found.size());
 
   for (size_t i = 0; i < expected.size(); ++i)

@@ -132,7 +132,7 @@ TEST_F(Volume, UpdateBlockVisibility)
   frame.depth_image = std::make_shared<Image>(640, 480);
   frame.projection.SetFocalLength(320, 320);
   frame.projection.SetCenterPoint(320, 240);
-  frame.Tcw = Transform::Translate(-10, 2, -30);
+  frame.Twc = Transform::Translate(10, -2, 30);
 
   {
     std::fill(expected.begin(), expected.end(), false);
@@ -251,7 +251,7 @@ TEST_F(Volume, CreateAllocationRequests)
 {
   Frame frame;
   frame.depth_image = std::make_shared<Image>(64, 48);
-  frame.Tcw = Transform::Translate(-10.73, 2.11, -33.54);
+  frame.Twc = Transform::Translate(-10.73, 2.11, -33.54);
   frame.projection.SetFocalLength(32, 32);
   frame.projection.SetCenterPoint(32, 24);
 
@@ -279,7 +279,7 @@ TEST_F(Volume, CreateAllocationRequests)
 
   std::vector<bool> collisions(MAIN_BLOCK_COUNT);
   std::fill(collisions.begin(), collisions.end(), false);
-  const Transform inv_transform = frame.Tcw.Inverse();
+  const Transform& Twc = frame.Twc;
 
   for (int y = 0; y < h; ++y)
   {
@@ -290,8 +290,8 @@ TEST_F(Volume, CreateAllocationRequests)
       host_depth[y * w + x] = d;
       const Vector2f uv(x + 0.5, y + 0.5);
       const Vector3f Xcp = d * frame.projection.Unproject(uv);
-      const Vector3f Xwp = Vector3f(inv_transform * Vector4f(Xcp, 1));
-      const Vector3f dir = (Xwp - inv_transform.GetTranslation()).Normalized();
+      const Vector3f Xwp = Vector3f(Twc * Vector4f(Xcp, 1));
+      const Vector3f dir = (Xwp - Twc.GetTranslation()).Normalized();
       const Vector3f origin = Xwp - trunc_length * dir;
 
       float t = 0;
