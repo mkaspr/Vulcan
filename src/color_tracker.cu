@@ -110,16 +110,20 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
             const float Ic = Sample(frame_width, frame_height,
                 frame_intensities, frame_uv[0], frame_uv[1]);
 
-            // TODO: return
             residual = Ic - Im;
-            // residual = Ic;
 
-            const float x = Xmp[0];
-            const float y = Xmp[1];
-            const float z = Xmp[2];
+            const float px = Xcp[0];
+            const float py = Xcp[1];
+            const float pz = Xcp[2];
+            const float inv_pz = 1.0f / pz;
+
+            const float cu = frame_uv[0];
+            const float cv = frame_uv[1];
 
             const float fx = frame_projection.GetFocalLength()[0];
             const float fy = frame_projection.GetFocalLength()[1];
+            const float cx = frame_projection.GetCenterPoint()[0];
+            const float cy = frame_projection.GetCenterPoint()[1];
 
             const float gx = Sample(frame_width, frame_height, frame_gradient_x,
                 frame_uv[0], frame_uv[1]);
@@ -127,17 +131,27 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
             const float gy = Sample(frame_width, frame_height, frame_gradient_y,
                 frame_uv[0], frame_uv[1]);
 
+            dfdx[0] = gy * ((py * cy - pz * fy) * inv_pz - py * cv * inv_pz) -
+                      gx * (py * cu * inv_pz - cx * py * inv_pz);
 
-            dfdx[0] = -fy*gy-y*(fx*gx*x*1/(z*z)+fy*gy*y*1/(z*z));
-            dfdx[1] = fx*gx+x*(fx*gx*x*1/(z*z)+fy*gy*y*1/(z*z));
-            dfdx[2] = (fy*gy*x)/z-(fx*gx*y)/z;
+            dfdx[1] = gy * (px * cv * inv_pz - cy * px * inv_pz) -
+                      gx * ((px * cx - pz * fx) * inv_pz - px * cu * inv_pz);
+
+            dfdx[2] = (gy * fy * px * inv_pz) - (gx * fx * py * inv_pz);
 
             if (translation_enabled)
             {
-              dfdx[3] = (fx*gx)/z;
-              dfdx[4] = (fy*gy)/z;
-              dfdx[5] = -fx*gx*x*1/(z*z)-fy*gy*y*1/(z*z);
+              dfdx[3] = gx * fx * inv_pz;
+
+              dfdx[4] = gy * fy * inv_pz;
+
+              dfdx[5] = gx * (cx * inv_pz - cu * inv_pz) +
+                        gy * (cy * inv_pz - cv * inv_pz);
             }
+
+            // TODO: clean up formulation
+            // (derivs assume solving for Tcw but we compute Twc)
+            dfdx = Vector6f::Zeros() - dfdx;
           }
         }
       }

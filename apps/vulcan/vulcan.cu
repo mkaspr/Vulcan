@@ -63,8 +63,8 @@ int main(int argc, char** argv)
   // LightTracker& tracker = *light_tracker;
   // tracker.SetMaxIterations(3);
 
-  PyramidTracker<DepthTracker> tracker;
-  // PyramidTracker<ColorTracker> tracker;
+  // PyramidTracker<DepthTracker> tracker;
+  PyramidTracker<ColorTracker> tracker;
   // PyramidTracker<LightTracker> tracker;
 
   LOG(INFO) << "Creating tracing frame...";
