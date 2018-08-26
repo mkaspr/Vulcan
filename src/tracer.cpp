@@ -41,10 +41,10 @@ void Tracer::ComputePatches(const Frame& frame)
 
   ResetBufferSize();
 
-  vulcan::ComputePatches(visible.GetData(), entries.GetData(), frame.Tcw,
-      frame.projection, block_length, visible.GetSize(), image_width,
-      image_height, bounds_width, bounds_height, patches_.GetData(),
-      buffer_size_.GetData());
+  vulcan::ComputePatches(visible.GetData(), entries.GetData(),
+      frame.Twc.Inverse(), frame.projection, block_length, visible.GetSize(),
+      image_width, image_height, bounds_width, bounds_height,
+      patches_.GetData(), buffer_size_.GetData());
 
   patches_.Resize(GetBufferSize());
 }
@@ -71,8 +71,8 @@ void Tracer::ComputePoints(Frame& frame)
 
   // TODO: expose variable
   vulcan::ComputePoints(entries.GetData(), voxels.GetData(), bounds_.GetData(),
-      block_count, block_length, voxel_length, trunc_length,
-      frame.Tcw.Inverse(), frame.projection, frame.depth_image->GetData(),
+      block_count, block_length, voxel_length, trunc_length, frame.Twc,
+      frame.projection, frame.depth_image->GetData(),
       frame.color_image->GetData(), w, h, 80, 60);
 }
 

@@ -458,7 +458,7 @@ void Volume::UpdateBlockVisibility(const Frame& frame)
   Visibility* block_visibility = block_visibility_.GetData();
   int* visible_blocks = visible_blocks_.GetData();
   const Projection& projection = frame.projection;
-  const Transform& Tcw = frame.Tcw;
+  const Transform Tcw = frame.Twc.Inverse();
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
   const float block_length = Block::resolution * voxel_length_;
@@ -486,7 +486,7 @@ void Volume::CreateAllocationRequests(const Frame& frame)
   const int width = frame.depth_image->GetWidth();
   const int height = frame.depth_image->GetHeight();
   const Projection& projection = frame.projection;
-  const Transform Twc = frame.Tcw.Inverse();
+  const Transform& Twc = frame.Twc;
   const float block_length = Block::resolution * voxel_length_;
 
   const dim3 threads(16, 16);

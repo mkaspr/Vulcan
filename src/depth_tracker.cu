@@ -289,8 +289,8 @@ void DepthTracker::ComputeResiduals(const Frame& frame,
   const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Twm = keyframe_->Tcw.Inverse();
-  const Transform Twc = frame.Tcw.Inverse();
+  const Transform& Twm = keyframe_->Twc;
+  const Transform& Twc = frame.Twc;
   float* residuals_ptr = residuals.GetData();
 
   const dim3 threads(16, 16);
@@ -317,8 +317,8 @@ void DepthTracker::ComputeJacobian(const Frame& frame,
   const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Twm = keyframe_->Tcw.Inverse();
-  const Transform Twc = frame.Tcw.Inverse();
+  const Transform& Twm = keyframe_->Twc;
+  const Transform& Twc = frame.Twc;
   Vector6f* jacobian_ptr = jacobian.GetData();
 
   const dim3 threads(16, 16);
@@ -353,8 +353,8 @@ void DepthTracker::ComputeSystem(const Frame& frame)
   const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Twm = keyframe_->Tcw.Inverse();
-  const Transform Twc = frame.Tcw.Inverse();
+  const Transform& Twm = keyframe_->Twc;
+  const Transform& Twc = frame.Twc;
   float* hessian = hessian_.GetData();
   float* gradient = gradient_.GetData();
 

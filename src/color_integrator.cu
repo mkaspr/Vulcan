@@ -107,7 +107,7 @@ void ColorIntegrator::Integrate(const Frame& frame)
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
   const Projection& projection = frame.projection;
-  const Transform& Tcw = frame.Tcw;
+  const Transform Tcw = frame.Twc.Inverse();
   Voxel* voxels = voxel_buffer.GetData();
 
   const int resolution = Block::resolution;

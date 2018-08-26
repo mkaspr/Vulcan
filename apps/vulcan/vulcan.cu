@@ -74,11 +74,11 @@ int main(int argc, char** argv)
 
   std::shared_ptr<Frame> trace_frame;
   trace_frame = std::make_shared<Frame>();
-  trace_frame->Tcw = Transform::Translate(0, 0, 0);
-  // trace_frame->projection.SetFocalLength(Vector2f(547, 547));
-  // trace_frame->projection.SetCenterPoint(Vector2f(320, 240));
-  trace_frame->projection.SetFocalLength(Vector2f(567.3940, 567.4752));
-  trace_frame->projection.SetCenterPoint(Vector2f(319.9336, 240.4598));
+  trace_frame->Twc = Transform::Translate(0, 0, 0);
+  // trace_frame->projection.SetFocalLength(547, 547);
+  // trace_frame->projection.SetCenterPoint(320, 240);
+  trace_frame->projection.SetFocalLength(524.4784, 525.9332);
+  trace_frame->projection.SetCenterPoint(320.0113, 243.5304);
   trace_frame->depth_image = std::make_shared<Image>(w, h);
   trace_frame->color_image = std::make_shared<ColorImage>(w, h);
   trace_frame->normal_image = std::make_shared<ColorImage>(w, h);
@@ -127,9 +127,11 @@ int main(int argc, char** argv)
     }
 
     Frame frame;
-    frame.Tcw = Transform::Translate(0, 0, 0);
-    frame.projection.SetFocalLength(Vector2f(547, 547));
-    frame.projection.SetCenterPoint(Vector2f(320, 240));
+    frame.Twc = Transform::Translate(0, 0, 0);
+    // frame.projection.SetFocalLength(547, 547);
+    // frame.projection.SetCenterPoint(320, 240);
+    frame.projection.SetFocalLength(524.4784, 525.9332);
+    frame.projection.SetCenterPoint(320.0113, 243.5304);
     frame.color_image = color_image;
     frame.depth_image = depth_image;
     frame.ComputeNormals();
@@ -141,11 +143,11 @@ int main(int argc, char** argv)
     else
     {
       LOG(INFO) << "Tracking frame " << i << "...";
-      frame.Tcw = trace_frame->Tcw;
+      frame.Twc = trace_frame->Twc;
       tracker.SetKeyframe(trace_frame);
       tracker.Track(frame);
 
-      LOG(INFO) << "Current pose:" << std::endl << frame.Tcw.GetMatrix() << std::endl;
+      LOG(INFO) << "Current pose:" << std::endl << frame.Twc.GetMatrix() << std::endl;
     }
 
     LOG(INFO) << "Viewing frame " << i << "...";
@@ -155,7 +157,7 @@ int main(int argc, char** argv)
     integrator.Integrate(frame);
 
     LOG(INFO) << "Tracing frame " << i << "...";
-    trace_frame->Tcw = frame.Tcw;
+    trace_frame->Twc = frame.Twc;
     tracer.Trace(*trace_frame);
 
     {

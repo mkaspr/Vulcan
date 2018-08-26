@@ -67,13 +67,13 @@ void PyramidTracker<Tracker>::Track(Frame& frame)
 
   tracker_->SetMaxIterations(5);
   tracker_->SetTranslationEnabled(true);
-  half_frame.Tcw = quarter_frame.Tcw;
+  half_frame.Twc = quarter_frame.Twc;
   tracker_->SetKeyframe(half_keyframe_);
   tracker_->Track(half_frame);
 
   tracker_->SetMaxIterations(7);
   tracker_->SetTranslationEnabled(true);
-  frame.Tcw = half_frame.Tcw;
+  frame.Twc = half_frame.Twc;
   tracker_->SetKeyframe(keyframe_);
   tracker_->Track(frame);
 }

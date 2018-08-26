@@ -38,7 +38,7 @@ void Frame::Downsample(Frame& frame)
 
   frame.projection.SetFocalLength(projection.GetFocalLength() / 2);
   frame.projection.SetCenterPoint(projection.GetCenterPoint() / 2);
-  frame.Tcw = Tcw;
+  frame.Twc = Twc;
 }
 
 } // namespace vulcan

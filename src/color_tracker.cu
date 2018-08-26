@@ -303,7 +303,7 @@ void ColorTracker::ComputeSystem(const Frame& frame)
   const Vector3f* frame_normals = frame.normal_image->GetData();
   const Projection& frame_projection = frame.projection;
   const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Tcm = frame.Tcw * keyframe_->Tcw.Inverse();
+  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
   float* hessian = hessian_.GetData();
   float* gradient = gradient_.GetData();
   float* residuals = residuals_.GetData();
