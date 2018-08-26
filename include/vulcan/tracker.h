@@ -57,6 +57,8 @@ class Tracker
 
     void ComputeUpdate(Frame& frame);
 
+    void ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const;
+
     void UpdateState(const Frame& frame);
 
     void EndSolve();

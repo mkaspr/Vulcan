@@ -456,8 +456,15 @@ typedef Vector<float, 2> Vector2f;
 typedef Vector<float, 3> Vector3f;
 typedef Vector<float, 4> Vector4f;
 typedef Vector<float, 6> Vector6f;
+typedef Vector<double, 2> Vector2d;
+typedef Vector<double, 3> Vector3d;
+typedef Vector<double, 4> Vector4d;
+typedef Vector<double, 6> Vector6d;
 typedef Matrix<float, 2, 2> Matrix2f;
 typedef Matrix<float, 3, 3> Matrix3f;
 typedef Matrix<float, 4, 4> Matrix4f;
+typedef Matrix<double, 2, 2> Matrix2d;
+typedef Matrix<double, 3, 3> Matrix3d;
+typedef Matrix<double, 4, 4> Matrix4d;
 
 } // namespace vulcan

@@ -7,41 +7,6 @@
 namespace vulcan
 {
 
-inline Transform exp(const Eigen::VectorXf& omega)
-{
-  const float theta_sq = omega.head<3>().squaredNorm();
-  const float theta = sqrt(theta_sq);
-  const float half_theta = 0.5 * theta;
-
-  float imag_factor;
-  float real_factor;
-
-  if(theta < 1E-10)
-  {
-    const float theta_po4 = theta_sq * theta_sq;
-    imag_factor = 0.5 - (1.0 / 48.0) * theta_sq + (1.0 / 3840.0) * theta_po4;
-    real_factor = 1 - 0.5 * theta_sq + (1.0 / 384.0) * theta_po4;
-  }
-  else
-  {
-    const float sin_half_theta = sin(half_theta);
-    imag_factor = sin_half_theta / theta;
-    real_factor = cos(half_theta);
-  }
-
-  Eigen::Vector3f xxx;
-  xxx[0] = imag_factor * omega[0];
-  xxx[1] = imag_factor * omega[1];
-  xxx[2] = imag_factor * omega[2];
-
-  const Transform R = Transform::Rotate(real_factor, xxx[0], xxx[1], xxx[2]);
-
-  const Transform T = (omega.size() == 6) ?
-      Transform::Translate(omega[3], omega[4], omega[5]) : Transform();
-
-  return T * R;
-}
-
 Tracker::Tracker() :
   translation_enabled_(true),
   max_iterations_(20)
@@ -187,13 +152,85 @@ void Tracker::ComputeUpdate(Frame& frame)
   hessian2.triangularView<Eigen::StrictlyUpper>() = hessian2.transpose();
   solver.compute(hessian2);
 
-  std::cout << "Hessian:" << std::endl << hessian2 << std::endl << std::endl;
+  // std::cout << "Hessian:" << std::endl << hessian2 << std::endl << std::endl;
 
   VULCAN_DEBUG(solver.info() == Eigen::Success);
 
   update = -solver.solve(gradient);
-  frame.Tcw = exp(update).Inverse() * frame.Tcw;
+  ApplyUpdate(frame, update);
+
   if (update.norm() < 1E-6) iteration_ = max_iterations_;
+}
+
+void Tracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
+{
+  // TODO: confirm if also valid update for color & light trackers
+
+  Eigen::VectorXf update(6);
+  update.setZero();
+
+  for (int i = 0; i < x.size(); ++i)
+  {
+    update[i] = x[i];
+  }
+
+  Matrix4f Tinc;
+
+  Tinc(0, 0) = 1.0;
+  Tinc(0, 1) = -update[2];
+  Tinc(0, 2) = +update[1];
+  Tinc(0, 3) = +update[3];
+
+  Tinc(1, 0) = +update[2];
+  Tinc(1, 1) = 1.0;
+  Tinc(1, 2) = +update[0];
+  Tinc(1, 3) = +update[4];
+
+  Tinc(2, 0) = -update[1];
+  Tinc(2, 1) = +update[0];
+  Tinc(2, 2) = 1.0;
+  Tinc(2, 3) = +update[5];
+
+  Tinc(3, 0) = 0.0;
+  Tinc(3, 1) = 0.0;
+  Tinc(3, 2) = 0.0;
+  Tinc(3, 3) = 1.0;
+
+  Transform Tmc = keyframe_->Tcw * frame.Tcw.Inverse();
+  Matrix4f T = Tinc * Tmc.GetMatrix();
+
+  Vector3f x_axis(T(0, 0), T(1, 0), T(2, 0));
+  Vector3f y_axis(T(0, 1), T(1, 1), T(2, 1));
+  Vector3f z_axis(T(0, 2), T(1, 2), T(2, 2));
+
+  x_axis.Normalize();
+  y_axis.Normalize();
+  z_axis = x_axis.Cross(y_axis);
+  y_axis = z_axis.Cross(x_axis);
+
+  Matrix3f R;
+
+  R(0, 0) = x_axis[0];
+  R(1, 0) = x_axis[1];
+  R(2, 0) = x_axis[2];
+
+  R(0, 1) = y_axis[0];
+  R(1, 1) = y_axis[1];
+  R(2, 1) = y_axis[2];
+
+  R(0, 2) = z_axis[0];
+  R(1, 2) = z_axis[1];
+  R(2, 2) = z_axis[2];
+
+  Vector3f t;
+
+  t[0] = T(0, 3);
+  t[1] = T(1, 3);
+  t[2] = T(2, 3);
+
+  Tmc = Transform::Translate(t) * Transform::Rotate(R);
+  const Transform Twc = keyframe_->Tcw.Inverse() * Tmc;
+  frame.Tcw = Twc.Inverse();
 }
 
 void Tracker::UpdateState(const Frame& frame)

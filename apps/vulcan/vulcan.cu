@@ -75,8 +75,10 @@ int main(int argc, char** argv)
   std::shared_ptr<Frame> trace_frame;
   trace_frame = std::make_shared<Frame>();
   trace_frame->Tcw = Transform::Translate(0, 0, 0);
-  trace_frame->projection.SetFocalLength(Vector2f(547, 547));
-  trace_frame->projection.SetCenterPoint(Vector2f(320, 240));
+  // trace_frame->projection.SetFocalLength(Vector2f(547, 547));
+  // trace_frame->projection.SetCenterPoint(Vector2f(320, 240));
+  trace_frame->projection.SetFocalLength(Vector2f(567.3940, 567.4752));
+  trace_frame->projection.SetCenterPoint(Vector2f(319.9336, 240.4598));
   trace_frame->depth_image = std::make_shared<Image>(w, h);
   trace_frame->color_image = std::make_shared<ColorImage>(w, h);
   trace_frame->normal_image = std::make_shared<ColorImage>(w, h);
@@ -84,7 +86,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 10;
-  const int frame_stop  = 50;
+  const int frame_stop  = 1500;
   const clock_t start = clock();
   bool first_frame = true;
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vulcan/matrix.h>
 #include <vulcan/tracker.h>
 
 namespace vulcan
@@ -14,6 +15,8 @@ class DepthTracker : public Tracker
     virtual ~DepthTracker();
 
     void ComputeResiduals(const Frame& frame, Buffer<float>& residuals) const;
+
+    void ComputeJacobian(const Frame& frame, Buffer<Vector6f>& jacobian) const;
 
   protected:
 

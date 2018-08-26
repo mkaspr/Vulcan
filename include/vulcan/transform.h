@@ -78,10 +78,10 @@ class Transform
       Vector3f y_axis(R(0, 1), R(1, 1), R(2, 1));
       Vector3f z_axis(R(0, 2), R(1, 2), R(2, 2));
 
-      x_axis.Normalize();
-      y_axis.Normalize();
-      z_axis = x_axis.Cross(y_axis);
-      y_axis = z_axis.Cross(x_axis);
+      // x_axis.Normalize();
+      // y_axis.Normalize();
+      // z_axis = x_axis.Cross(y_axis);
+      // y_axis = z_axis.Cross(x_axis);
 
       matrix(0, 0) = x_axis[0];
       matrix(1, 0) = x_axis[1];
