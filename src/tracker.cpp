@@ -196,12 +196,12 @@ void Tracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
   Tinc(3, 2) = 0.0;
   Tinc(3, 3) = 1.0;
 
-  Transform Tmc = keyframe_->Tcw * frame.Tcw.Inverse();
-  Matrix4f T = Tinc * Tmc.GetMatrix();
+  const Transform Twc = frame.Tcw.Inverse();
+  const Matrix4f M = Tinc * Twc.GetMatrix();
 
-  Vector3f x_axis(T(0, 0), T(1, 0), T(2, 0));
-  Vector3f y_axis(T(0, 1), T(1, 1), T(2, 1));
-  Vector3f z_axis(T(0, 2), T(1, 2), T(2, 2));
+  Vector3f x_axis(M(0, 0), M(1, 0), M(2, 0));
+  Vector3f y_axis(M(0, 1), M(1, 1), M(2, 1));
+  Vector3f z_axis(M(0, 2), M(1, 2), M(2, 2));
 
   x_axis.Normalize();
   y_axis.Normalize();
@@ -224,13 +224,11 @@ void Tracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
 
   Vector3f t;
 
-  t[0] = T(0, 3);
-  t[1] = T(1, 3);
-  t[2] = T(2, 3);
+  t[0] = M(0, 3);
+  t[1] = M(1, 3);
+  t[2] = M(2, 3);
 
-  Tmc = Transform::Translate(t) * Transform::Rotate(R);
-  const Transform Twc = keyframe_->Tcw.Inverse() * Tmc;
-  frame.Tcw = Twc.Inverse();
+  frame.Tcw = (Transform::Translate(t) * Transform::Rotate(R)).Inverse();
 }
 
 void Tracker::UpdateState(const Frame& frame)

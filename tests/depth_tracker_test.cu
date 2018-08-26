@@ -193,16 +193,6 @@ inline void ComputeResiduals(const Transform& Tmc, const float* keyframe_depths,
               const Vector3d delta = Vector3d(Xmp) - Vector3d(Ymp);
               const Vector3d base_delta = Vector3d(base_Xmp) - Vector3d(Ymp);
 
-              // if (frame_x == 149 && frame_y == 0)
-              // {
-              //   std::cout << std::endl;
-              //   printf("this uv: %f %f\n", final_keyframe_uv[0], final_keyframe_uv[1]);
-              //   printf("Xmp: %.8f %.8f %.8f\n", Xmp[0], Xmp[1], Xmp[2]);
-              //   printf("Ymp: %.8f %.8f %.8f\n", Ymp[0], Ymp[1], Ymp[2]);
-              //   printf("Ymn: %.8f %.8f %.8f\n", keyframe_normal[0], keyframe_normal[1], keyframe_normal[2]);
-              //   std::cout << std::endl;
-              // }
-
               if (base_delta.SquaredNorm() < 0.05)
               {
                 residuals[frame_index] = delta.Dot(keyframe_normal);
@@ -340,29 +330,15 @@ inline void ComputeJacobian(const Frame& keyframe, Frame& frame,
     frame.Tcw = GetTransform(transform, keyframe.Tcw, base_transform);
     ComputeResiduals(keyframe, frame, add_residuals, base_transform);
 
-    {
-      std::cout << "Tcw:" << std::endl << frame.Tcw.GetMatrix() << std::endl << std::endl;
-    }
-
     transform[i] = -step_sizes[i];
     frame.Tcw = GetTransform(transform, keyframe.Tcw, base_transform);
     ComputeResiduals(keyframe, frame, sub_residuals, base_transform);
-
-    {
-      std::cout << "Tcw:" << std::endl << frame.Tcw.GetMatrix() << std::endl << std::endl;
-    }
 
     for (size_t j = 0; j < jacobian.size(); ++j)
     {
       const double add = add_residuals[j];
       const double sub = sub_residuals[j];
       jacobian[j][i] = (add - sub) / (2 * step_sizes[i]);
-
-      if (j == 149)
-      {
-        printf("%d: %.8f %.8f = %.8f %.8f (%.8f)\n", i, add, sub,
-            sub - add, jacobian[j][i], step_sizes[i]);
-      }
     }
   }
 }
@@ -390,37 +366,16 @@ TEST(DepthTracker, Jacobian)
   ComputeJacobian(*keyframe, frame, expected);
   ASSERT_EQ(expected.size(), found.size());
 
-  std::cout << "e: " << expected[149].Transpose() << std::endl;
-  std::cout << "f: " << found[149].Transpose() << std::endl;
+  const float epsilon = 7E-4;
 
-  const float epsilon = 1E-6;
-
-  const int w = frame.depth_image->GetWidth();
-  const int h = frame.depth_image->GetHeight();
-
-  for (int y = 0; y < h; ++y)
+  for (size_t i = 0; i < expected.size(); ++i)
   {
-    for (int x = 0; x < w; ++x)
-    {
-      const int i = y * w + x;
-
-      std::cout << "e(" << x << ", " << y << "): " << expected[i].Transpose() << std::endl;
-      std::cout << "f(" << x << ", " << y << "): " << found[i].Transpose() << std::endl;
-      std::cout << std::endl;
-
-      for (int k = 0; k < 6; ++k)
-      {
-        const float f = found[i][k];
-        const float e = expected[i][k];
-        const float r = (fabsf(e) < 1E-5) ? f : fabsf((f - e) / e);
-        const float l = (fabsf(e) < 1E-5) ? 1E-6 : fabs(0.05 / e);
-
-        std::cout << "e: " << e << ", f: " << f << ", r: " << r << ", l: " << l << std::endl;
-        ASSERT_NEAR(0, r, l);
-
-        // ASSERT_NEAR(expected[i][k], found[i][k], epsilon);
-      }
-    }
+    ASSERT_NEAR(expected[i][0], found[i][0], epsilon);
+    ASSERT_NEAR(expected[i][1], found[i][1], epsilon);
+    ASSERT_NEAR(expected[i][2], found[i][2], epsilon);
+    ASSERT_NEAR(expected[i][3], found[i][3], epsilon);
+    ASSERT_NEAR(expected[i][4], found[i][4], epsilon);
+    ASSERT_NEAR(expected[i][5], found[i][5], epsilon);
   }
 }
 
@@ -461,11 +416,6 @@ TEST(DepthTracker, Residuals)
 
   for (size_t i = 0; i < expected.size(); ++i)
   {
-    if (fabs(expected[i] - found[i]) > 1E-6)
-    {
-      printf("%lu: %f %f\n", i, expected[i], found[i]);
-    }
-
     ASSERT_NEAR(expected[i], found[i], 1E-6);
   }
 }
