@@ -57,24 +57,28 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     // check if within truncated segment
     if (distance > -truncation_length)
     {
-      // compute voxel data index
+      // compute voxel index
       const int r = Block::resolution;
       const int r2 = Block::resolution * Block::resolution;
       const int block_index = entry.data * Block::voxel_count;
       const int voxel_index = block_index + z * r2 + y * r + x;
-
-      // update voxel data
       Voxel voxel = voxels[voxel_index];
-      const Vector3f curr_color = colors[image_index];
+
+      // update voxel distance
       const float prev_dist = voxel.distance_weight * voxel.distance;
       const float curr_dist = min(1.0f, distance / truncation_length);
-      const Vector3f prev_color = voxel.distance_weight * voxel.GetColor();
       const float dist_weight = voxel.distance_weight + 1;
-      const float color_weight = voxel.color_weight + 1;
       voxel.distance_weight = min(max_dist_weight, dist_weight);
-      voxel.color_weight = min(max_color_weight, color_weight);
       voxel.distance = (prev_dist + curr_dist) / dist_weight;
+
+      // update voxel color
+      const Vector3f prev_color = voxel.color_weight * voxel.GetColor();
+      const Vector3f curr_color = colors[image_index];
+      const float color_weight = voxel.color_weight + 1;
+      voxel.color_weight = min(max_color_weight, color_weight);
       voxel.SetColor((prev_color + curr_color) / color_weight);
+
+      // store updates in global memory
       voxels[voxel_index] = voxel;
     }
   }

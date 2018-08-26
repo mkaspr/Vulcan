@@ -31,18 +31,18 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating integrator...";
 
-  Light light;
-  light.SetIntensity(2.0f);
-  light.SetPosition(0.1f, 0.0f, 0.0f);
+  // Light light;
+  // light.SetIntensity(2.0f);
+  // light.SetPosition(0.1f, 0.0f, 0.0f);
 
-  LightIntegrator integrator(volume);
-  integrator.SetMaxDistanceWeight(200);
-  integrator.SetMaxColorWeight(16);
-  integrator.SetLight(light);
-
-  // ColorIntegrator integrator(volume);
+  // LightIntegrator integrator(volume);
   // integrator.SetMaxDistanceWeight(200);
-  // integrator.SetMaxColorWeight(64);
+  // integrator.SetMaxColorWeight(16);
+  // integrator.SetLight(light);
+
+  ColorIntegrator integrator(volume);
+  integrator.SetMaxDistanceWeight(32);
+  integrator.SetMaxColorWeight(16);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -75,10 +75,10 @@ int main(int argc, char** argv)
   std::shared_ptr<Frame> trace_frame;
   trace_frame = std::make_shared<Frame>();
   trace_frame->Twc = Transform::Translate(0, 0, 0);
-  // trace_frame->projection.SetFocalLength(547, 547);
-  // trace_frame->projection.SetCenterPoint(320, 240);
-  trace_frame->projection.SetFocalLength(524.4784, 525.9332);
-  trace_frame->projection.SetCenterPoint(320.0113, 243.5304);
+  trace_frame->projection.SetFocalLength(547, 547);
+  trace_frame->projection.SetCenterPoint(320, 240);
+  // trace_frame->projection.SetFocalLength(524.4784, 525.9332);
+  // trace_frame->projection.SetCenterPoint(320.0113, 243.5304);
   trace_frame->depth_image = std::make_shared<Image>(w, h);
   trace_frame->color_image = std::make_shared<ColorImage>(w, h);
   trace_frame->normal_image = std::make_shared<ColorImage>(w, h);
@@ -102,11 +102,11 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
       VULCAN_ASSERT(depth_image->GetHeight() == h);
@@ -115,11 +115,11 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
-      // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);
       VULCAN_ASSERT(color_image->GetHeight() == h);
@@ -128,10 +128,10 @@ int main(int argc, char** argv)
 
     Frame frame;
     frame.Twc = Transform::Translate(0, 0, 0);
-    // frame.projection.SetFocalLength(547, 547);
-    // frame.projection.SetCenterPoint(320, 240);
-    frame.projection.SetFocalLength(524.4784, 525.9332);
-    frame.projection.SetCenterPoint(320.0113, 243.5304);
+    frame.projection.SetFocalLength(547, 547);
+    frame.projection.SetCenterPoint(320, 240);
+    // frame.projection.SetFocalLength(524.4784, 525.9332);
+    // frame.projection.SetCenterPoint(320.0113, 243.5304);
     frame.color_image = color_image;
     frame.depth_image = depth_image;
     frame.ComputeNormals();
