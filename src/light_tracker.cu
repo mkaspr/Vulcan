@@ -177,6 +177,34 @@ void ComputeResidualsKernel(const Transform Tcm, const float* keyframe_depths,
 
 template <bool translation_enabled>
 VULCAN_GLOBAL
+void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
+    const Vector3f* keyframe_normals, const float* keyframe_albedos,
+    const Projection keyframe_projection, int keyframe_width,
+    int keyframe_height, const float* frame_depths,
+    const Vector3f* frame_normals, const float* frame_intensities,
+    const float* frame_gradient_x, const float* frame_gradient_y,
+    const Projection frame_projection, int frame_width, int frame_height,
+    const Light light, Vector6f* jacobian)
+{
+  const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
+  const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (keyframe_x < keyframe_width && keyframe_y < keyframe_height)
+  {
+    Vector6f dfdx = Vector6f::Zeros();
+
+    Evaluate<translation_enabled>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
+        keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
+        keyframe_height, frame_depths, frame_normals, frame_intensities,
+        frame_gradient_x, frame_gradient_y, frame_projection, frame_width,
+        frame_height, light, nullptr, &dfdx);
+
+    jacobian[keyframe_y * keyframe_width + keyframe_x] = dfdx;
+  }
+}
+
+template <bool translation_enabled>
+VULCAN_GLOBAL
 void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
     const Vector3f* keyframe_normals, const float* keyframe_albedos,
     const Projection keyframe_projection, int keyframe_width,
@@ -364,6 +392,45 @@ void LightTracker::ComputeJacobian(const Frame& frame,
   ComputeFrameIntensities(frame);
   ComputeFrameGradients(frame);
 
+  const int frame_width = frame.depth_image->GetWidth();
+  const int frame_height = frame.depth_image->GetHeight();
+  const int keyframe_width = keyframe_->depth_image->GetWidth();
+  const int keyframe_height = keyframe_->depth_image->GetHeight();
+  const float* frame_depths = frame.depth_image->GetData();
+  const float* keyframe_intensities = keyframe_intensities_.GetData();
+  const float* frame_intensities = frame_intensities_.GetData();
+  const float* keyframe_depths = keyframe_->depth_image->GetData();
+  const float* frame_gradient_x = frame_gradient_x_.GetData();
+  const float* frame_gradient_y = frame_gradient_y_.GetData();
+  const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Vector3f* frame_normals = frame.normal_image->GetData();
+  const Projection& frame_projection = frame.projection;
+  const Projection& keyframe_projection = keyframe_->projection;
+  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+
+  jacobian.Resize(keyframe_->depth_image->GetTotal());
+  Vector6f* d_jacobian = jacobian.GetData();
+
+  const dim3 threads(16, 16);
+  const dim3 total(keyframe_width, keyframe_height);
+  const dim3 blocks = GetKernelBlocks(total, threads);
+
+  if (translation_enabled_)
+  {
+    CUDA_LAUNCH(ComputeJacobianKernel<true>, blocks, threads, 0, 0, Tcm,
+        keyframe_depths, keyframe_normals, keyframe_intensities,
+        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
+        frame_projection, frame_width, frame_height, light_, d_jacobian);
+  }
+  else
+  {
+    CUDA_LAUNCH(ComputeJacobianKernel<false>, blocks, threads, 0, 0, Tcm,
+        keyframe_depths, keyframe_normals, keyframe_intensities,
+        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
+        frame_projection, frame_width, frame_height, light_, d_jacobian);
+  }
 }
 
 void LightTracker::ComputeSystem(const Frame& frame)

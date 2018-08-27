@@ -515,13 +515,13 @@ TEST(LightTracker, Jacobian)
         const double r = fabs(d / n);
         const double l = fabs(0.065 / p);
 
-        // if (r > l)
+        // if (d > 0.05)
         // {
         //   printf("%d %d -> %f %f [%d]) e: %f, f: %f, d: %f, r: %f, l: %f\n",
         //       x, y, uv[0], uv[1], j, e, f, d, r, l);
         // }
 
-        ASSERT_LT(r, l);
+        ASSERT_NEAR(f, e, 0.05);
       }
     }
   }
