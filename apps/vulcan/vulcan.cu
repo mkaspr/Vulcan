@@ -10,7 +10,9 @@
 DEFINE_int32(main_blocks, 65024, "main block count");
 DEFINE_int32(excess_blocks, 8192, "excess block count");
 DEFINE_double(voxel_length, 0.008, "voxel edge length");
-DEFINE_double(truncation_length, 0.04, "volume truncation length");
+DEFINE_double(trunc_length, 0.04, "volume truncation length");
+DEFINE_int32(start_frame, 0, "frame number to begin reconstruction");
+DEFINE_int32(stop_frame, 1, "frame number to end reconstruction");
 DEFINE_string(output, "output.ply", "output mesh file");
 
 #include <ctime>
@@ -26,23 +28,23 @@ int main(int argc, char** argv)
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(FLAGS_main_blocks, FLAGS_excess_blocks);
-  volume->SetTruncationLength(FLAGS_truncation_length);
+  volume->SetTruncationLength(FLAGS_trunc_length);
   volume->SetVoxelLength(FLAGS_voxel_length);
 
   LOG(INFO) << "Creating integrator...";
 
-  Light light;
-  light.SetIntensity(2.0f);
-  light.SetPosition(0.1f, 0.0f, 0.0f);
+  // Light light;
+  // light.SetIntensity(2.0f);
+  // light.SetPosition(0.1f, 0.0f, 0.0f);
 
-  LightIntegrator integrator(volume);
-  integrator.SetMaxDistanceWeight(200);
-  integrator.SetMaxColorWeight(16);
-  integrator.SetLight(light);
-
-  // ColorIntegrator integrator(volume);
-  // integrator.SetMaxDistanceWeight(32);
+  // LightIntegrator integrator(volume);
+  // integrator.SetMaxDistanceWeight(200);
   // integrator.SetMaxColorWeight(16);
+  // integrator.SetLight(light);
+
+  ColorIntegrator integrator(volume);
+  integrator.SetMaxDistanceWeight(32);
+  integrator.SetMaxColorWeight(16);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -50,15 +52,15 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  // PyramidTracker<DepthTracker> tracker;
+  PyramidTracker<DepthTracker> tracker;
   // PyramidTracker<ColorTracker> tracker;
 
-  std::shared_ptr<LightTracker> light_tracker;
-  light_tracker = std::make_shared<LightTracker>();
-  light_tracker->SetLight(light);
+  // std::shared_ptr<LightTracker> light_tracker;
+  // light_tracker = std::make_shared<LightTracker>();
+  // light_tracker->SetLight(light);
   // PyramidTracker<LightTracker> tracker(light_tracker);
-  LightTracker& tracker = *light_tracker;
-  tracker.SetMaxIterations(1);
+  // // LightTracker& tracker = *light_tracker;
+  // // tracker.SetMaxIterations(1);
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -78,8 +80,8 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Integrating frames...";
 
-  const int frame_start = 10;
-  const int frame_stop  = 11;
+  const int frame_start = FLAGS_start_frame;
+  const int frame_stop  = FLAGS_stop_frame;
   const clock_t start = clock();
   bool first_frame = true;
 

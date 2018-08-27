@@ -26,7 +26,7 @@ struct Frame
 
   void ComputeNormals();
 
-  void Downsample(Frame& frame);
+  void Downsample(Frame& frame) const;
 };
 
 } // namespace vulcan

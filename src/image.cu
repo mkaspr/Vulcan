@@ -268,6 +268,7 @@ void ColorImage::Save(const std::string& file, int type, float alpha,
   thrust::host_vector<Vector3f> data(d_data, d_data + GetTotal());
   cv::Mat image(size_[1], size_[0], CV_32FC3, data.data());
   image.convertTo(image, type, alpha, beta);
+  cv::cvtColor(image, image, CV_RGB2BGR);
   cv::imwrite(file, image);
 }
 

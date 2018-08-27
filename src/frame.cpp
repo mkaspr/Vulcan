@@ -22,7 +22,7 @@ void Frame::ComputeNormals()
   vulcan::ComputeNormals(depths, projection, normals, w, h);
 }
 
-void Frame::Downsample(Frame& frame)
+void Frame::Downsample(Frame& frame) const
 {
   VULCAN_DEBUG(depth_image);
   VULCAN_DEBUG(color_image);

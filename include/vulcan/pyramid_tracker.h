@@ -35,8 +35,6 @@ class PyramidTracker
     std::shared_ptr<Frame> half_keyframe_;
 
     std::shared_ptr<Frame> quarter_keyframe_;
-
-    std::shared_ptr<Frame> eighth_keyframe_;
 };
 
 } // namespace vulcan
