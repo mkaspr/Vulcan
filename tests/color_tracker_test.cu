@@ -413,9 +413,6 @@ inline void ComputeJacobianX(const Frame& keyframe, Frame& frame,
 
       jacobian[j][i] = (add - sub) / (2 * step_sizes[i]);
       visibles[j][i] = (add_visibles[j] && sub_visibles[j]) ? 1 : 0;
-
-      const int x = j % w;
-      const int y = j / w;
     }
   }
 }

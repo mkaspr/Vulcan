@@ -25,6 +25,8 @@ class LightTracker : public Tracker
 
     int GetResidualCount(const Frame &frame) const override;
 
+    void ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const override;
+
     void ComputeSystem(const Frame& frame) override;
 
     void ComputeKeyframeIntensities();

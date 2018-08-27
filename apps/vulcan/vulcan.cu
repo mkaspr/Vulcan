@@ -65,7 +65,6 @@ int main(int argc, char** argv)
 
   // PyramidTracker<DepthTracker> tracker;
   PyramidTracker<ColorTracker> tracker;
-  // PyramidTracker<LightTracker> tracker;
 
   LOG(INFO) << "Creating tracing frame...";
 
