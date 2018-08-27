@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vulcan/matrix.h>
 
 namespace vulcan
 {
@@ -16,6 +17,12 @@ class Integrator
 
     std::shared_ptr<Volume> GetVolume() const;
 
+    const Vector2f& GetDepthRange() const;
+
+    void SetDepthRange(const Vector2f& range);
+
+    void SetDepthRange(float min, float max);
+
     float GetMaxDistanceWeight() const;
 
     void SetMaxDistanceWeight(float weight);
@@ -29,6 +36,8 @@ class Integrator
   protected:
 
     std::shared_ptr<Volume> volume_;
+
+    Vector2f depth_range_;
 
     float max_distance_weight_;
 

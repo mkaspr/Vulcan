@@ -26,6 +26,8 @@ TEST(Tracer, ComputePatches)
   thrust::host_vector<Patch> expected_patches;
 
   float block_length = 0.008;
+  float min_depth = 0.1;
+  float max_depth = 5.0;
   const int image_width = 640;
   const int image_height = 480;
   const int bounds_width = 80;
@@ -131,8 +133,8 @@ TEST(Tracer, ComputePatches)
   int* p_found_count = d_found_count.data().get();
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      block_count, image_width, image_height, bounds_width, bounds_height,
-      p_found_patches, p_found_count);
+      min_depth, max_depth, block_count, image_width, image_height,
+      bounds_width, bounds_height, p_found_patches, p_found_count);
 
   thrust::host_vector<Patch> found_patches(d_found_patches);
   ASSERT_EQ(expected_patches.size(), d_found_count[0]);
@@ -250,6 +252,8 @@ TEST(Tracer, ComputePoints)
   const float trunc_length = 0.04;
   const float voxel_length = 0.008;
   const float block_length = voxel_length * Block::resolution;
+  const float min_depth = 0.1;
+  const float max_depth = 5.0;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(4096, 2048);
@@ -320,8 +324,8 @@ TEST(Tracer, ComputePoints)
   d_patch_count[0] = 0;
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      visible_count, image_width, image_height, bounds_width, bounds_height,
-      p_patches, p_patch_count);
+      min_depth, max_depth, visible_count, image_width, image_height,
+      bounds_width, bounds_height, p_patches, p_patch_count);
 
   const int patch_count = d_patch_count[0];
 
@@ -394,6 +398,8 @@ TEST(Tracer, ComputeNormals)
   const float trunc_length = 0.04;
   const float voxel_length = 0.008;
   const float block_length = voxel_length * Block::resolution;
+  const float min_depth = 0.1;
+  const float max_depth = 5.0;
 
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(2 * 4096, 2 * 2048);
@@ -500,8 +506,8 @@ TEST(Tracer, ComputeNormals)
   d_patch_count[0] = 0;
 
   vulcan::ComputePatches(p_indices, p_entries, Tcw, projection, block_length,
-      visible_count, image_width, image_height, bounds_width, bounds_height,
-      p_patches, p_patch_count);
+      min_depth, max_depth, visible_count, image_width, image_height,
+      bounds_width, bounds_height, p_patches, p_patch_count);
 
   const int patch_count = d_patch_count[0];
 

@@ -11,6 +11,8 @@ DEFINE_int32(main_blocks, 65024, "main block count");
 DEFINE_int32(excess_blocks, 8192, "excess block count");
 DEFINE_double(voxel_length, 0.008, "voxel edge length");
 DEFINE_double(trunc_length, 0.04, "volume truncation length");
+DEFINE_double(min_depth, 0.1, "minimum depth value to process");
+DEFINE_double(max_depth, 5.0, "maximum depth value to process");
 DEFINE_int32(start_frame, 0, "frame number to begin reconstruction");
 DEFINE_int32(stop_frame, 1, "frame number to end reconstruction");
 DEFINE_string(output, "output.ply", "output mesh file");
@@ -26,10 +28,13 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating volume...";
 
+  const Vector2f depth_range(FLAGS_min_depth, FLAGS_max_depth);
+
   std::shared_ptr<Volume> volume;
   volume = std::make_shared<Volume>(FLAGS_main_blocks, FLAGS_excess_blocks);
   volume->SetTruncationLength(FLAGS_trunc_length);
   volume->SetVoxelLength(FLAGS_voxel_length);
+  volume->SetDepthRange(depth_range);
 
   LOG(INFO) << "Creating integrator...";
 
@@ -38,17 +43,20 @@ int main(int argc, char** argv)
   // light.SetPosition(0.1f, 0.0f, 0.0f);
 
   // LightIntegrator integrator(volume);
+  // integrator.SetDepthRange(depth_range);
   // integrator.SetMaxDistanceWeight(200);
   // integrator.SetMaxColorWeight(16);
   // integrator.SetLight(light);
 
   ColorIntegrator integrator(volume);
+  integrator.SetDepthRange(depth_range);
   integrator.SetMaxDistanceWeight(32);
   integrator.SetMaxColorWeight(16);
 
   LOG(INFO) << "Creating tracer...";
 
   Tracer tracer(volume);
+  tracer.SetDepthRange(depth_range);
 
   LOG(INFO) << "Creating tracker...";
 

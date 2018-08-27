@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vulcan/buffer.h>
+#include <vulcan/matrix.h>
 #include <vulcan/types.h>
 
 namespace vulcan
@@ -21,6 +22,12 @@ class Volume
     int GetMainBlockCount() const;
 
     int GetExcessBlockCount() const;
+
+    const Vector2f& GetDepthRange() const;
+
+    void SetDepthRange(const Vector2f& range);
+
+    void SetDepthRange(float min, float max);
 
     float GetVoxelLength() const;
 
@@ -93,6 +100,8 @@ class Volume
     Buffer<Visibility> block_visibility_;
 
     Buffer<int> visible_blocks_;
+
+    Vector2f depth_range_;
 
     int max_block_count_;
 

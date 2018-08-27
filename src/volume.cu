@@ -88,7 +88,8 @@ void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
     Visibility* block_visibility, AllocationType* allocation_types,
     Block* allocation_blocks, const float* depths, int image_width,
     int image_height, Projection projection, Transform Twc,
-    int block_count, float block_length, float truncation_length)
+    int block_count, float block_length, float truncation_length,
+    float min_depth, float max_depth)
 {
   // compute pixel indices
   const int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -113,7 +114,7 @@ void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
     const float depth = depths[y * image_width + x];
 
     // ignore invalid depth values
-    if (depth <= 0.1f || depth >= 5.0f) return; // TODO: expose parameters
+    if (depth < min_depth || depth > max_depth) return;
 
     // compute inferred 3D point in world frame frame depth
     // NOTE: assume depth values are distance from image plane along Z-axis
@@ -370,8 +371,9 @@ Volume::Volume(int main_block_count, int excess_block_count) :
   max_block_count_(main_block_count + excess_block_count),
   main_block_count_(main_block_count),
   excess_block_count_(excess_block_count),
-  truncation_length_(0.02),
-  voxel_length_(0.008),
+  depth_range_(0.1f, 5.0f),
+  truncation_length_(0.04f),
+  voxel_length_(0.008f),
   empty_(true)
 {
   Initialize();
@@ -385,6 +387,22 @@ int Volume::GetMainBlockCount() const
 int Volume::GetExcessBlockCount() const
 {
   return excess_block_count_;
+}
+
+const Vector2f& Volume::GetDepthRange() const
+{
+  return depth_range_;
+}
+
+void Volume::SetDepthRange(const Vector2f& range)
+{
+  VULCAN_DEBUG(range[0] > 0 && range[0] < range[1]);
+  depth_range_ = range;
+}
+
+void Volume::SetDepthRange(float min, float max)
+{
+  SetDepthRange(Vector2f(min, max));
 }
 
 float Volume::GetVoxelLength() const
@@ -496,7 +514,7 @@ void Volume::CreateAllocationRequests(const Frame& frame)
   CUDA_LAUNCH(CreateAllocationRequestsKernel, blocks, threads, 0, 0,
     hash_entries, block_visibility, allocation_types,allocation_blocks,
     depth, width, height, projection, Twc, main_block_count_,
-    block_length, truncation_length_);
+    block_length, truncation_length_, depth_range_[0], depth_range_[1]);
 }
 
 void Volume::HandleAllocationRequests()

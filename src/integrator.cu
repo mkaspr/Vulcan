@@ -6,6 +6,7 @@ namespace vulcan
 
 Integrator::Integrator(std::shared_ptr<Volume> volume) :
   volume_(volume),
+  depth_range_(0.1f, 5.0f),
   max_distance_weight_(16),
   max_color_weight_(16)
 {
@@ -14,6 +15,22 @@ Integrator::Integrator(std::shared_ptr<Volume> volume) :
 std::shared_ptr<Volume> Integrator::GetVolume() const
 {
   return volume_;
+}
+
+const Vector2f& Integrator::GetDepthRange() const
+{
+  return depth_range_;
+}
+
+void Integrator::SetDepthRange(const Vector2f& range)
+{
+  VULCAN_DEBUG(range[0] > 0 && range[0] < range[1]);
+  depth_range_ = range;
+}
+
+void Integrator::SetDepthRange(float min, float max)
+{
+  SetDepthRange(Vector2f(min, max));
 }
 
 float Integrator::GetMaxDistanceWeight() const

@@ -29,6 +29,12 @@ class Tracer
 
     std::shared_ptr<const Volume> GetVolume() const;
 
+    const Vector2f& GetDepthRange() const;
+
+    void SetDepthRange(const Vector2f& range);
+
+    void SetDepthRange(float min, float max);
+
     void Trace(Frame& frame);
 
   protected:
@@ -66,6 +72,8 @@ class Tracer
     Buffer<int> buffer_size_;
 
     std::shared_ptr<const Volume> volume_;
+
+    Vector2f depth_range_;
 };
 
 } // namespace vulcan

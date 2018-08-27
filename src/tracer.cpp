@@ -11,7 +11,8 @@ namespace vulcan
 {
 
 Tracer::Tracer(std::shared_ptr<const Volume> volume) :
-  volume_(volume)
+  volume_(volume),
+  depth_range_(0.1f, 5.0f)
 {
   Initialize();
 }
@@ -19,6 +20,22 @@ Tracer::Tracer(std::shared_ptr<const Volume> volume) :
 std::shared_ptr<const Volume> Tracer::GetVolume() const
 {
   return volume_;
+}
+
+const Vector2f& Tracer::GetDepthRange() const
+{
+  return depth_range_;
+}
+
+void Tracer::SetDepthRange(const Vector2f& range)
+{
+  VULCAN_DEBUG(range[0] > 0 && range[0] < range[1]);
+  depth_range_ = range;
+}
+
+void Tracer::SetDepthRange(float min, float max)
+{
+  SetDepthRange(Vector2f(min, max));
 }
 
 void Tracer::Trace(Frame& frame)
@@ -42,9 +59,9 @@ void Tracer::ComputePatches(const Frame& frame)
   ResetBufferSize();
 
   vulcan::ComputePatches(visible.GetData(), entries.GetData(),
-      frame.Twc.Inverse(), frame.projection, block_length, visible.GetSize(),
-      image_width, image_height, bounds_width, bounds_height,
-      patches_.GetData(), buffer_size_.GetData());
+      frame.Twc.Inverse(), frame.projection, block_length, depth_range_[0],
+      depth_range_[1], visible.GetSize(), image_width, image_height,
+      bounds_width, bounds_height, patches_.GetData(), buffer_size_.GetData());
 
   patches_.Resize(GetBufferSize());
 }

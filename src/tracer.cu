@@ -14,8 +14,9 @@ template <int BLOCK_SIZE>
 VULCAN_GLOBAL
 void ComputePatchesKernel(const int* indices, const HashEntry* entries,
     const Transform Tcw, const Projection projection, float block_length,
-    int block_count, int image_width, int image_height, int bounds_width,
-    int bounds_height, Patch* patches, int* patch_count)
+    float min_depth, float max_depth, int block_count, int image_width,
+    int image_height, int bounds_width, int bounds_height, Patch* patches,
+    int* patch_count)
 {
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -56,9 +57,8 @@ void ComputePatchesKernel(const int* indices, const HashEntry* entries,
           bmax[0] = clamp<short>(max((short)ceilf(uv[0]), bmax[0]), 0, bounds_width - 1);
           bmax[1] = clamp<short>(max((short)ceilf(uv[1]), bmax[1]), 0, bounds_height - 1);
 
-          // TODO: expose parameters
-          depth_bounds[0] = clamp(min(Xcp[2], depth_bounds[0]), 0.1f, 5.0f);
-          depth_bounds[1] = clamp(max(Xcp[2], depth_bounds[1]), 0.1f, 5.0f);
+          depth_bounds[0] = clamp(min(Xcp[2], depth_bounds[0]), min_depth, max_depth);
+          depth_bounds[1] = clamp(max(Xcp[2], depth_bounds[1]), min_depth, max_depth);
         }
       }
     }
@@ -440,15 +440,17 @@ void ComputePointsKernel(const HashEntry* entries, const Voxel* voxels,
 
 void ComputePatches(const int* indices, const HashEntry* entries,
     const Transform& Tcw, const Projection& projection, float block_length,
-    int block_count, int image_width, int image_height, int bounds_width,
-    int bounds_height, Patch* patches, int* patch_count)
+    float min_depth, float max_depth, int block_count, int image_width,
+    int image_height, int bounds_width, int bounds_height, Patch* patches,
+    int* patch_count)
 {
   const int threads = 512;
   const int blocks = GetKernelBlocks(block_count, threads);
 
   CUDA_LAUNCH(ComputePatchesKernel<threads>, blocks, threads, 0, 0,
-      indices, entries, Tcw, projection, block_length, block_count, image_width,
-      image_height, bounds_width, bounds_height, patches, patch_count);
+      indices, entries, Tcw, projection, block_length, min_depth, max_depth,
+      block_count, image_width, image_height, bounds_width, bounds_height,
+      patches, patch_count);
 }
 
 void ComputeBounds(const Patch* patches, Vector2f* bounds, int bounds_width,

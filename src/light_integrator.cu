@@ -17,10 +17,11 @@ namespace
 VULCAN_GLOBAL
 void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     float voxel_length, const Light light, float block_length,
-    float truncation_length, const float* depths, const Vector3f* colors,
-    const Vector3f* normals, int image_width, int image_height,
-    float max_dist_weight, float max_color_weight, const Projection projection,
-    const Transform Tcw, Voxel* voxels)
+    float truncation_length, float min_depth, float max_depth,
+    const float* depths, const Vector3f* colors, const Vector3f* normals,
+    int image_width, int image_height, float max_dist_weight,
+    float max_color_weight, const Projection projection, const Transform Tcw,
+    Voxel* voxels)
 {
   // get voxel indices
   const int x = threadIdx.x;
@@ -52,7 +53,7 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     const float depth = depths[image_index];
 
     // ignore invalid depth values
-    if (depth <= 0.1f || depth >= 5.0f) return; // TODO: expose parameters
+    if (depth < min_depth || depth > max_depth) return;
 
     // compute signed distance
     const float distance = depth - Xcp[2];
@@ -148,9 +149,10 @@ void LightIntegrator::Integrate(const Frame& frame)
   const dim3 threads(resolution, resolution, resolution);
 
   CUDA_LAUNCH(IntegrateKernel, blocks, threads, 0, 0, indices, entries,
-      voxel_length, light_, block_length, truncation_length, depths, colors,
-      normals, image_width, image_height, max_distance_weight_,
-      max_color_weight_, projection, Tcw, voxels);
+      voxel_length, light_, block_length, truncation_length,
+      depth_range_[0], depth_range_[1], depths, colors, normals, image_width,
+      image_height, max_distance_weight_, max_color_weight_, projection, Tcw,
+      voxels);
 }
 
 } // namespace vulcan
