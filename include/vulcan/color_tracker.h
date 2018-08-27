@@ -14,6 +14,10 @@ class ColorTracker : public Tracker
 
     virtual ~ColorTracker();
 
+    void ComputeResiduals(const Frame& frame, Buffer<float>& residuals);
+
+    void ComputeJacobian(const Frame& frame, Buffer<Vector6f>& jacobian);
+
   protected:
 
     void BeginSolve(const Frame& frame) override;

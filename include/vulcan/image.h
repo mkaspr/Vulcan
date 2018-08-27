@@ -63,6 +63,18 @@ class Image
       return sizeof(float) * GetTotal();
     }
 
+    VULCAN_HOST_DEVICE
+    inline const float* GetData() const
+    {
+      return data_;
+    }
+
+    VULCAN_HOST_DEVICE
+    inline float* GetData()
+    {
+      return data_;
+    }
+
     VULCAN_HOST
     void Resize(int w, int h)
     {
@@ -95,18 +107,6 @@ class Image
       const size_t bytes = sizeof(float) * image.total();
       const cudaMemcpyKind kind = cudaMemcpyHostToDevice;
       CUDA_DEBUG(cudaMemcpy(data_, image.data, bytes, kind));
-    }
-
-    VULCAN_HOST_DEVICE
-    inline const float* GetData() const
-    {
-      return data_;
-    }
-
-    VULCAN_HOST_DEVICE
-    inline float* GetData()
-    {
-      return data_;
     }
 
     VULCAN_HOST
@@ -177,6 +177,18 @@ class ColorImage
       return sizeof(Vector3f) * GetTotal();
     }
 
+    VULCAN_HOST_DEVICE
+    inline const Vector3f* GetData() const
+    {
+      return data_;
+    }
+
+    VULCAN_HOST_DEVICE
+    inline Vector3f* GetData()
+    {
+      return data_;
+    }
+
     VULCAN_HOST
     void Resize(int w, int h)
     {
@@ -212,17 +224,8 @@ class ColorImage
       CUDA_DEBUG(cudaMemcpy(data_, image.data, bytes, kind));
     }
 
-    VULCAN_HOST_DEVICE
-    inline const Vector3f* GetData() const
-    {
-      return data_;
-    }
-
-    VULCAN_HOST_DEVICE
-    inline Vector3f* GetData()
-    {
-      return data_;
-    }
+    VULCAN_HOST
+    void ConvertTo(Image& image) const;
 
     VULCAN_HOST
     void Downsample(ColorImage& image, bool nearest) const;

@@ -4,6 +4,18 @@
 namespace vulcan
 {
 
+VULCAN_GLOBAL
+void ConvertKernel(int total, const Vector3f* src, float* dst)
+{
+  const int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (index < total)
+  {
+    const Vector3f value = src[index];
+    dst[index] = (value[0] + value[1] + value[2]) / 3.0f;
+  }
+}
+
 template <int BLOCK_DIM>
 VULCAN_GLOBAL
 void GetGradientsKernel(int width, int height, const float* values,
@@ -194,6 +206,17 @@ void Image::Downsample(Image& image, bool nearest) const
     CUDA_LAUNCH(DownsampleKernel<false>, blocks, threads, 0, 0, src_w, src_h,
         src, dst_w, dst_h, dst);
   }
+}
+
+void ColorImage::ConvertTo(Image& image) const
+{
+  image.Resize(size_);
+  const int threads = 512;
+  const int total = GetTotal();
+  const int blocks = GetKernelBlocks(total, threads);
+
+  CUDA_LAUNCH(ConvertKernel, blocks, threads, 0, 0, total, data_,
+      image.GetData());
 }
 
 void ColorImage::Downsample(ColorImage& image, bool nearest) const

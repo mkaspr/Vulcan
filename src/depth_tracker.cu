@@ -58,7 +58,7 @@ inline void Evaluate(int frame_x, int frame_y, const Transform& Twm,
           Vector3f keyframe_normal = keyframe_normals[keyframe_index];
           keyframe_normal = Vector3f(Twm * Vector4f(keyframe_normal, 0));
 
-          if (keyframe_normal.SquaredNorm() > 0 &&
+          if (keyframe_normal.SquaredNorm() > 0.0f &&
               frame_normal.Dot(keyframe_normal) > 0.5f)
           {
             Vector2f final_keyframe_uv;
@@ -68,7 +68,7 @@ inline void Evaluate(int frame_x, int frame_y, const Transform& Twm,
             const Vector3f Ywp = Vector3f(Twm * Vector4f(Ymp, 1));
             const Vector3f delta = Xwp - Ywp;
 
-            if (delta.SquaredNorm() < 0.05)
+            if (delta.SquaredNorm() < 0.05f)
             {
               if (residual) *residual = delta.Dot(keyframe_normal);
 
@@ -134,12 +134,6 @@ void ComputeJacobianKernel(const Transform Twm, const Transform Twc,
         keyframe_normals, keyframe_projection, keyframe_width, keyframe_height,
         frame_depths, frame_normals, frame_projection, frame_width,
         frame_height, nullptr, &result);
-
-    // if (frame_x == 149 && frame_y == 0)
-    // {
-    //   printf("J: %f %f %f %f %f %f\n", result[0], result[1], result[2],
-    //       result[3], result[4], result[5]);
-    // }
 
     jacobian[frame_y * frame_width + frame_x] = result;
   }
