@@ -1,4 +1,6 @@
 #include <vulcan/image.h>
+#include <thrust/device_ptr.h>
+#include <thrust/host_vector.h>
 #include <vulcan/device.h>
 
 namespace vulcan
@@ -208,6 +210,16 @@ void Image::Downsample(Image& image, bool nearest) const
   }
 }
 
+void Image::Save(const std::string& file, int type, float alpha,
+    float beta) const
+{
+  thrust::device_ptr<const float> d_data(data_);
+  thrust::host_vector<float> data(d_data, d_data + GetTotal());
+  cv::Mat image(size_[1], size_[0], CV_32FC1, data.data());
+  image.convertTo(image, type, alpha, beta);
+  cv::imwrite(file, image);
+}
+
 void ColorImage::ConvertTo(Image& image) const
 {
   image.Resize(size_);
@@ -247,6 +259,16 @@ void ColorImage::Downsample(ColorImage& image, bool nearest) const
     CUDA_LAUNCH(DownsampleKernel<false>, blocks, threads, 0, 0, src_w, src_h,
         src, dst_w, dst_h, dst);
   }
+}
+
+void ColorImage::Save(const std::string& file, int type, float alpha,
+    float beta) const
+{
+  thrust::device_ptr<const Vector3f> d_data(data_);
+  thrust::host_vector<Vector3f> data(d_data, d_data + GetTotal());
+  cv::Mat image(size_[1], size_[0], CV_32FC3, data.data());
+  image.convertTo(image, type, alpha, beta);
+  cv::imwrite(file, image);
 }
 
 } // namespace vulcan

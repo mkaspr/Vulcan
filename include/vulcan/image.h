@@ -115,6 +115,10 @@ class Image
     VULCAN_HOST
     void Downsample(Image& image, bool nearest) const;
 
+    VULCAN_HOST
+    void Save(const std::string& file, int type = CV_8UC1, float alpha = 1,
+        float beta = 0) const;
+
   protected:
 
     Vector2i size_;
@@ -229,6 +233,10 @@ class ColorImage
 
     VULCAN_HOST
     void Downsample(ColorImage& image, bool nearest) const;
+
+    VULCAN_HOST
+    void Save(const std::string& file, int type = CV_8UC3, float alpha = 1,
+        float beta = 0) const;
 
   protected:
 

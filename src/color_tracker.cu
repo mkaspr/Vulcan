@@ -14,19 +14,6 @@ namespace vulcan
 namespace
 {
 
-VULCAN_GLOBAL
-void ComputeIntensitiesKernel(int total, const Vector3f* colors,
-    float* intensities)
-{
-  const int index = blockIdx.x * blockDim.x + threadIdx.x;
-
-  if (index < total)
-  {
-    const Vector3f color = colors[index];
-    intensities[index] = (color[0] + color[1] + color[2]) / 3.0f;
-  }
-}
-
 VULCAN_DEVICE
 inline float Sample(int w, int h, const float* values, float u, float v)
 {
@@ -134,21 +121,16 @@ void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
             dfdx[1] = gy * (px * cv * inv_pz - cy * px * inv_pz) -
                       gx * ((px * cx - pz * fx) * inv_pz - px * cu * inv_pz);
 
-            dfdx[2] = (gy * fy * px * inv_pz) - (gx * fx * py * inv_pz);
+            dfdx[2] = (gy * fy * px - gx * fx * py) * inv_pz;
 
             if (translation_enabled)
             {
               dfdx[3] = gx * fx * inv_pz;
-
               dfdx[4] = gy * fy * inv_pz;
-
-              dfdx[5] = gx * (cx * inv_pz - cu * inv_pz) +
-                        gy * (cy * inv_pz - cv * inv_pz);
+              dfdx[5] = (gx * (cx - cu) + gy * (cy - cv)) * inv_pz;
             }
 
-            // TODO: clean up formulation
-            // (derivs assume solving for Tcw but we compute Twc)
-            *jacobian = Vector6f::Zeros() - dfdx;
+            *jacobian = dfdx;
           }
         }
       }
@@ -179,6 +161,44 @@ void ComputeResidualsKernel(const Transform Tcm, const float* keyframe_depths,
         frame_width, frame_height, &residual, nullptr);
 
     residuals[keyframe_y * keyframe_width + keyframe_x] = residual;
+  }
+}
+
+template <bool translation_enabled>
+VULCAN_GLOBAL
+void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
+    const Vector3f* keyframe_normals, const float* keyframe_intensities,
+    const Projection keyframe_projection, int keyframe_width,
+    int keyframe_height, const float* frame_depths,
+    const Vector3f* frame_normals, const float* frame_intensities,
+    const float* frame_gradient_x, const float* frame_gradient_y,
+    const Projection frame_projection, int frame_width, int frame_height,
+    Vector6f* jacobian)
+{
+  Vector6f dfdx = Vector6f::Zeros();
+  const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
+  const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (keyframe_x < keyframe_width && keyframe_y < keyframe_height)
+  {
+    if (translation_enabled)
+    {
+      Evaluate<true>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
+          keyframe_normals, keyframe_intensities, keyframe_projection,
+          keyframe_width, keyframe_height, frame_depths, frame_normals,
+          frame_intensities, frame_gradient_x, frame_gradient_y,
+          frame_projection, frame_width, frame_height, nullptr, &dfdx);
+    }
+    else
+    {
+      Evaluate<false>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
+          keyframe_normals, keyframe_intensities, keyframe_projection,
+          keyframe_width, keyframe_height, frame_depths, frame_normals,
+          frame_intensities, frame_gradient_x, frame_gradient_y,
+          frame_projection, frame_width, frame_height, nullptr, &dfdx);
+    }
+
+    jacobian[keyframe_y * keyframe_width + keyframe_x] = dfdx;
   }
 }
 
@@ -317,36 +337,12 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
 
 void ColorTracker::ComputeKeyframeIntensities()
 {
-  const int width = keyframe_->depth_image->GetWidth();
-  const int height = keyframe_->depth_image->GetHeight();
-  keyframe_intensities_.Resize(width, height);
-
-  const Vector3f* colors = keyframe_->color_image->GetData();
-  float* intensities = keyframe_intensities_.GetData();
-
-  const int threads = 512;
-  const int total = width * height;
-  const int blocks = GetKernelBlocks(total, threads);
-
-  CUDA_LAUNCH(ComputeIntensitiesKernel, blocks, threads, 0, 0, total, colors,
-      intensities);
+  keyframe_->color_image->ConvertTo(keyframe_intensities_);
 }
 
 void ColorTracker::ComputeFrameIntensities(const Frame& frame)
 {
-  const int width = frame.depth_image->GetWidth();
-  const int height = frame.depth_image->GetHeight();
-  frame_intensities_.Resize(width, height);
-
-  const Vector3f* colors = frame.color_image->GetData();
-  float* intensities = frame_intensities_.GetData();
-
-  const int threads = 512;
-  const int total = width * height;
-  const int blocks = GetKernelBlocks(total, threads);
-
-  CUDA_LAUNCH(ComputeIntensitiesKernel, blocks, threads, 0, 0, total, colors,
-      intensities);
+  frame.color_image->ConvertTo(frame_intensities_);
 }
 
 void ColorTracker::ComputeFrameGradients(const Frame& frame)
@@ -359,7 +355,6 @@ void ColorTracker::ComputeResiduals(const Frame& frame,
 {
   ComputeKeyframeIntensities();
   ComputeFrameIntensities(frame);
-  ComputeFrameGradients(frame);
 
   residuals.Resize(GetResidualCount(frame));
   const int frame_width = frame.depth_image->GetWidth();
@@ -393,6 +388,48 @@ void ColorTracker::ComputeResiduals(const Frame& frame,
 void ColorTracker::ComputeJacobian(const Frame& frame,
     Buffer<Vector6f>& jacobian)
 {
+  ComputeKeyframeIntensities();
+  ComputeFrameIntensities(frame);
+  ComputeFrameGradients(frame);
+
+  jacobian.Resize(GetResidualCount(frame));
+  const int frame_width = frame.depth_image->GetWidth();
+  const int frame_height = frame.depth_image->GetHeight();
+  const int keyframe_width = keyframe_->depth_image->GetWidth();
+  const int keyframe_height = keyframe_->depth_image->GetHeight();
+  const float* frame_depths = frame.depth_image->GetData();
+  const float* keyframe_intensities = keyframe_intensities_.GetData();
+  const float* frame_intensities = frame_intensities_.GetData();
+  const float* keyframe_depths = keyframe_->depth_image->GetData();
+  const float* frame_gradient_x = frame_gradient_x_.GetData();
+  const float* frame_gradient_y = frame_gradient_y_.GetData();
+  const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Vector3f* frame_normals = frame.normal_image->GetData();
+  const Projection& frame_projection = frame.projection;
+  const Projection& keyframe_projection = keyframe_->projection;
+  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+  Vector6f* d_jacobian = jacobian.GetData();
+
+  const dim3 threads(16, 16);
+  const dim3 total(keyframe_width, keyframe_height);
+  const dim3 blocks = GetKernelBlocks(total, threads);
+
+  if (translation_enabled_)
+  {
+    CUDA_LAUNCH(ComputeJacobianKernel<true>, blocks, threads, 0, 0, Tcm,
+        keyframe_depths, keyframe_normals, keyframe_intensities,
+        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
+        frame_projection, frame_width, frame_height, d_jacobian);
+  }
+  else
+  {
+    CUDA_LAUNCH(ComputeJacobianKernel<false>, blocks, threads, 0, 0, Tcm,
+        keyframe_depths, keyframe_normals, keyframe_intensities,
+        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
+        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
+        frame_projection, frame_width, frame_height, d_jacobian);
+  }
 }
 
 void ColorTracker::ComputeSystem(const Frame& frame)
