@@ -583,6 +583,88 @@ TEST(LightTracker, Residuals)
   }
 }
 
+TEST(LightTracker, Track)
+{
+  Frame frame;
+  Buffer<float> buffer;
+  LightTracker tracker;
+  std::shared_ptr<Frame> keyframe;
+  std::vector<double> expected;
+  std::vector<float> found;
+  Image keyframe_intensities;
+  Image frame_intensities;
+
+  Light light;
+  light.SetIntensity(2.0f);
+  light.SetPosition(0.1f, 0.0f, 0.0f);
+
+  keyframe = std::make_shared<Frame>();
+  CreateKeyframeY(*keyframe, light);
+  tracker.SetKeyframe(keyframe);
+  tracker.SetTranslationEnabled(true);
+  tracker.SetLight(light);
+
+  CreateFrameY(frame, light);
+
+  {
+    const Transform old_Twc = frame.Twc;
+
+    for (int i = 0; i < 20; ++i)
+    {
+      tracker.Track(frame);
+    }
+
+    const Transform new_Twc = frame.Twc;
+    const Matrix4f diff = old_Twc.GetInverseMatrix() * new_Twc.GetMatrix();
+
+    for (int i = 0; i < diff.GetRows(); ++i)
+    {
+      for (int j = 0; j < diff.GetColumns(); ++j)
+      {
+        const float expected = (i == j) ? 1 : 0;
+        ASSERT_NEAR(expected, diff(j, i), 1E-5);
+      }
+    }
+
+    // std::cout << "old_Twc:" << std::endl << old_Twc.GetMatrix() << std::endl;
+    // std::cout << "new_Twc:" << std::endl << new_Twc.GetMatrix() << std::endl;
+    // std::cout << "dif_Twc:" << std::endl << old_Twc.GetInverseMatrix() * new_Twc.GetMatrix() << std::endl;
+  }
+
+  {
+    const Transform old_Twc = frame.Twc;
+
+    Transform prb_Twc = frame.Twc;
+
+    prb_Twc = Transform::Translate(0.1, 0.1, 0.1) *
+        Transform::Rotate(0.999871, 0.008638, -0.010375, 0.008638) * prb_Twc;
+
+    frame.Twc = prb_Twc;
+
+    for (int i = 0; i < 20; ++i)
+    {
+      tracker.Track(frame);
+    }
+
+    const Transform new_Twc = frame.Twc;
+    const Matrix4f diff = old_Twc.GetInverseMatrix() * new_Twc.GetMatrix();
+
+    for (int i = 0; i < diff.GetRows(); ++i)
+    {
+      for (int j = 0; j < diff.GetColumns(); ++j)
+      {
+        const float expected = (i == j) ? 1 : 0;
+        ASSERT_NEAR(expected, diff(j, i), 1E-5);
+      }
+    }
+
+    // std::cout << "old_Twc:" << std::endl << old_Twc.GetMatrix() << std::endl;
+    // std::cout << "prb_Twc:" << std::endl << prb_Twc.GetMatrix() << std::endl;
+    // std::cout << "new_Twc:" << std::endl << new_Twc.GetMatrix() << std::endl;
+    // std::cout << "dif_Twc:" << std::endl << old_Twc.GetInverseMatrix() * new_Twc.GetMatrix() << std::endl;
+  }
+}
+
 } // namespace testing
 
 } // namespace vulcan
