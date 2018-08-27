@@ -31,18 +31,18 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating integrator...";
 
-  // Light light;
-  // light.SetIntensity(2.0f);
-  // light.SetPosition(0.1f, 0.0f, 0.0f);
+  Light light;
+  light.SetIntensity(2.0f);
+  light.SetPosition(0.1f, 0.0f, 0.0f);
 
-  // LightIntegrator integrator(volume);
-  // integrator.SetMaxDistanceWeight(200);
-  // integrator.SetMaxColorWeight(16);
-  // integrator.SetLight(light);
-
-  ColorIntegrator integrator(volume);
-  integrator.SetMaxDistanceWeight(32);
+  LightIntegrator integrator(volume);
+  integrator.SetMaxDistanceWeight(200);
   integrator.SetMaxColorWeight(16);
+  integrator.SetLight(light);
+
+  // ColorIntegrator integrator(volume);
+  // integrator.SetMaxDistanceWeight(32);
+  // integrator.SetMaxColorWeight(16);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -50,21 +50,15 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  // DepthTracker tracker;
-  // tracker.SetMaxIterations(1);
-
-  // ColorTracker tracker;
-  // tracker.SetMaxIterations(5);
-
-  // std::shared_ptr<LightTracker> light_tracker;
-  // light_tracker = std::make_shared<LightTracker>();
-  // light_tracker->SetLight(light);
-  // // PyramidTracker<LightTracker> tracker(light_tracker);
-  // LightTracker& tracker = *light_tracker;
-  // tracker.SetMaxIterations(3);
-
   // PyramidTracker<DepthTracker> tracker;
-  PyramidTracker<ColorTracker> tracker;
+  // PyramidTracker<ColorTracker> tracker;
+
+  std::shared_ptr<LightTracker> light_tracker;
+  light_tracker = std::make_shared<LightTracker>();
+  light_tracker->SetLight(light);
+  // PyramidTracker<LightTracker> tracker(light_tracker);
+  LightTracker& tracker = *light_tracker;
+  tracker.SetMaxIterations(1);
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -85,7 +79,7 @@ int main(int argc, char** argv)
   LOG(INFO) << "Integrating frames...";
 
   const int frame_start = 10;
-  const int frame_stop  = 1500;
+  const int frame_stop  = 11;
   const clock_t start = clock();
   bool first_frame = true;
 

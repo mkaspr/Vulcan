@@ -55,7 +55,8 @@ class Light
       const Vector3f delta = position_ - point;
       const Vector3f direction = delta.Normalized();
       const float distance_squared = delta.SquaredNorm();
-      return intensity_ * normal.Dot(direction) / distance_squared;
+      const float cos_theta = normal.Dot(direction);
+      return intensity_ * cos_theta / distance_squared;
     }
 
   protected:

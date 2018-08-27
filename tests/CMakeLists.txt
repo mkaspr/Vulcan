@@ -34,11 +34,12 @@ set(CPP_SOURCES
 
 set(CUDA_SOURCES
   buffer_test.cu
-  depth_tracker_test.cu
   color_tracker_test.cu
+  depth_tracker_test.cu
   frame_test.cu
   image_test.cu
   integrator_test.cu
+  light_tracker_test.cu
   sampler_test.cu
   tracer_test.cu
   util_test.cu
