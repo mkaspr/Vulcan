@@ -60,6 +60,10 @@ class LightTracker : public Tracker
     float depth_threshold_;
 
     int frame_;
+
+  public:
+
+    bool write_;
 };
 
 } // namespace vulcan

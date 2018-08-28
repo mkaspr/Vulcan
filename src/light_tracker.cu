@@ -151,86 +151,138 @@ void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
   if (residual) *residual = 0;
   if (jacobian) *jacobian = Vector6f::Zeros();
 
+  // check if keyframe has depth at pixel
   if (keyframe_depth > 0)
   {
+    // project keyframe point onto current frame
     const float keyframe_u = keyframe_x + 0.5f;
     const float keyframe_v = keyframe_y + 0.5f;
     const Vector3f Xmp = keyframe_projection.Unproject(keyframe_u, keyframe_v, keyframe_depth);
     const Vector3f Xcp = Vector3f(Tcm * Vector4f(Xmp, 1));
     const Vector2f frame_uv = frame_projection.Project(Xcp);
 
+    // check if point falls within image bounds
     if (frame_uv[0] >= 0.5f && frame_uv[0] < frame_width  - 0.5f &&
         frame_uv[1] >= 0.5f && frame_uv[1] < frame_height - 0.5f)
     {
+      // read depth value in current frame
       const int frame_x = frame_uv[0];
       const int frame_y = frame_uv[1];
-
       const int frame_index = frame_y * frame_width + frame_x;
       const float frame_depth = frame_depths[frame_index];
-      const float mask = frame_mask[frame_index];
 
-      if (mask > 0.5f && fabsf(frame_depth - Xcp[2]) < 0.1f)
+      // check if depths values are similar enough
+      if (fabsf(frame_depth - Xcp[2]) < 0.1f)
       {
+        // read keyframe and current frame normals
         const Vector3f frame_normal = frame_normals[frame_index];
         Vector3f keyframe_normal = keyframe_normals[keyframe_index];
         keyframe_normal = Vector3f(Tcm * Vector4f(keyframe_normal, 0));
 
+        // check if normals are valid and similar enough
         if (keyframe_normal.SquaredNorm() > 0.5f &&
-            frame_normal.Dot(keyframe_normal) > 0.5f)
+            frame_normal.Dot(keyframe_normal) > 0.8f)
         {
-          const float aa = keyframe_albedos[keyframe_index];
+          // read light tracker image mask
+          const float mask = frame_mask[frame_index];
 
-          if (aa > 0)
+          // check if valid pixel for light tracking
+          if (mask > 0.5f)
           {
-            const float shading = light.GetShading(Xcp, keyframe_normal);
-            const float Im = shading * aa;
+            const float aa = keyframe_albedos[keyframe_index];
 
-            const float Ic = Sample(frame_width, frame_height,
-                frame_intensities, frame_uv[0], frame_uv[1]);
+            if (aa > 0)
+            {
+              const float shading = light.GetShading(Xcp, keyframe_normal);
+              const float Im = shading * aa;
 
-            if (residual) *residual = Ic - Im;
+              const float Ic = Sample(frame_width, frame_height,
+                  frame_intensities, frame_uv[0], frame_uv[1]);
 
+              if (residual) *residual = Ic - Im;
+
+              if (jacobian)
+              {
+                Vector6f dfdx = Vector6f::Zeros();
+
+                const float px = Xcp[0];
+                const float py = Xcp[1];
+                const float pz = Xcp[2];
+
+                const float nx = keyframe_normal[0];
+                const float ny = keyframe_normal[1];
+                const float nz = keyframe_normal[2];
+
+                const float lx = light.GetPosition()[0];
+                const float ly = light.GetPosition()[1];
+                const float lz = light.GetPosition()[2];
+
+                const float ii = light.GetIntensity();
+
+                const float fx = frame_projection.GetFocalLength()[0];
+                const float fy = frame_projection.GetFocalLength()[1];
+                const float cx = frame_projection.GetCenterPoint()[0];
+                const float cy = frame_projection.GetCenterPoint()[1];
+
+                const float gx = Sample(frame_width, frame_height, frame_gradient_x,
+                    frame_uv[0], frame_uv[1]);
+
+                const float gy = Sample(frame_width, frame_height, frame_gradient_y,
+                    frame_uv[0], frame_uv[1]);
+
+                dfdx[0] = gy*((cy*py-fy*pz)/pz-py*1.0f/(pz*pz)*(cy*pz+fy*py))+gx*((cx*py)/pz-py*1.0f/(pz*pz)*(cx*pz+fx*px))+(aa*ii*(nz*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-ny*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-ny*pz*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*py*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*(lx-px)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*(ly-py)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*(lz-pz)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+aa*ii*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+                dfdx[1] = -gx*((cx*px-fx*pz)/pz-px*1.0f/(pz*pz)*(cx*pz+fx*px))-gy*((cy*px)/pz-px*1.0f/(pz*pz)*(cy*pz+fy*py))-(aa*ii*(nz*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*pz*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*px*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*(lx-px)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*(ly-py)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*(lz-pz)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+                dfdx[2] = (aa*ii*(ny*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*py*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*px*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*(lx-px)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*(ly-py)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*(lz-pz)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-(fx*gx*py)/pz+(fy*gy*px)/pz+aa*ii*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+
+                if (translation_enabled)
+                {
+                  dfdx[3] = (fx*gx)/pz-(aa*ii*(-nx*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(lx-px)*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(ly-py)*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(lz-pz)*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+                  dfdx[4] = (fy*gy)/pz-(aa*ii*(-ny*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(lx-px)*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(ly-py)*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(lz-pz)*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+                  dfdx[5] = gx*(cx/pz-1.0f/(pz*pz)*(cx*pz+fx*px))+gy*(cy/pz-1.0f/(pz*pz)*(cy*pz+fy*py))-(aa*ii*(-nz*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(lx-px)*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(ly-py)*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(lz-pz)*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+                }
+
+                *jacobian = dfdx;
+              }
+            }
+          }
+          // default to standard depth tracking
+          else
+          {
+            // unproject current frame depth to 3D point in current frame
+            const Vector2f final_frame_uv(frame_x + 0.5f, frame_y + 0.5f);
+            const Vector3f Xcq = frame_projection.Unproject(final_frame_uv, frame_depth);
+
+            // compute difference between points in current frame
+            const Vector3f delta = Xcp - Xcq;
+
+            // compute and store depth tracking residual
+            if (residual) *residual = delta.Dot(keyframe_normal);
+
+            // compute and store depth tracking jacobian
             if (jacobian)
             {
-              Vector6f dfdx = Vector6f::Zeros();
-
               const float px = Xcp[0];
               const float py = Xcp[1];
               const float pz = Xcp[2];
+
+              const float dx = delta[0];
+              const float dy = delta[1];
+              const float dz = delta[2];
 
               const float nx = keyframe_normal[0];
               const float ny = keyframe_normal[1];
               const float nz = keyframe_normal[2];
 
-              const float lx = light.GetPosition()[0];
-              const float ly = light.GetPosition()[1];
-              const float lz = light.GetPosition()[2];
-
-              const float ii = light.GetIntensity();
-
-              const float fx = frame_projection.GetFocalLength()[0];
-              const float fy = frame_projection.GetFocalLength()[1];
-              const float cx = frame_projection.GetCenterPoint()[0];
-              const float cy = frame_projection.GetCenterPoint()[1];
-
-              const float gx = Sample(frame_width, frame_height, frame_gradient_x,
-                  frame_uv[0], frame_uv[1]);
-
-              const float gy = Sample(frame_width, frame_height, frame_gradient_y,
-                  frame_uv[0], frame_uv[1]);
-
-              dfdx[0] = gy*((cy*py-fy*pz)/pz-py*1.0f/(pz*pz)*(cy*pz+fy*py))+gx*((cx*py)/pz-py*1.0f/(pz*pz)*(cx*pz+fx*px))+(aa*ii*(nz*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-ny*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-ny*pz*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*py*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*(lx-px)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*(ly-py)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*(lz-pz)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+aa*ii*(pz*(ly-py)*2.0f-py*(lz-pz)*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
-              dfdx[1] = -gx*((cx*px-fx*pz)/pz-px*1.0f/(pz*pz)*(cx*pz+fx*px))-gy*((cy*px)/pz-px*1.0f/(pz*pz)*(cy*pz+fy*py))-(aa*ii*(nz*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*pz*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*px*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*(lx-px)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*(ly-py)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*(lz-pz)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(pz*(lx-px)*2.0f-px*(lz-pz)*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
-              dfdx[2] = (aa*ii*(ny*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-nx*py*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*px*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*(lx-px)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*(ly-py)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*(lz-pz)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-(fx*gx*py)/pz+(fy*gy*px)/pz+aa*ii*(py*(lx-px)*2.0f-px*(ly-py)*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+              (*jacobian)[0] = dz*ny - dy*nz - ny*pz + nz*py;
+              (*jacobian)[1] = dx*nz - dz*nx + nx*pz - nz*px;
+              (*jacobian)[2] = dy*nx - dx*ny - nx*py + ny*px;
 
               if (translation_enabled)
               {
-                dfdx[3] = (fx*gx)/pz-(aa*ii*(-nx*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(lx-px)*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(ly-py)*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(lz-pz)*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(lx*2.0f-px*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
-                dfdx[4] = (fy*gy)/pz-(aa*ii*(-ny*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(lx-px)*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(ly-py)*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(lz-pz)*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(ly*2.0f-py*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
-                dfdx[5] = gx*(cx/pz-1.0f/(pz*pz)*(cx*pz+fx*px))+gy*(cy/pz-1.0f/(pz*pz)*(cy*pz+fy*py))-(aa*ii*(-nz*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nx*(lx-px)*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+ny*(ly-py)*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)+nz*(lz-pz)*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),3.0f/2.0f)*(1.0f/2.0f)))/(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))-aa*ii*(lz*2.0f-pz*2.0f)*1.0f/powf(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f),2.0f)*(nx*(lx-px)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+ny*(ly-py)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f))+nz*(lz-pz)*1.0f/sqrt(powf(lx-px,2.0f)+powf(ly-py,2.0f)+powf(lz-pz,2.0f)));
+                (*jacobian)[3] = nx;
+                (*jacobian)[4] = ny;
+                (*jacobian)[5] = nz;
               }
-
-              *jacobian = dfdx;
             }
           }
         }
@@ -547,7 +599,7 @@ void LightTracker::ComputeJacobian(const Frame& frame,
 
 void LightTracker::ComputeSystem(const Frame& frame)
 {
-  // WriteDataFiles(frame);
+  // if (write_) WriteDataFiles(frame);
 
   const int frame_width = frame.depth_image->GetWidth();
   const int frame_height = frame.depth_image->GetHeight();

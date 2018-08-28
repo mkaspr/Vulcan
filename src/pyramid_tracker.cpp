@@ -11,7 +11,8 @@ template<typename Tracker>
 PyramidTracker<Tracker>::PyramidTracker() :
   tracker_(std::shared_ptr<Tracker>(new Tracker())),
   half_keyframe_(std::make_shared<Frame>()),
-  quarter_keyframe_(std::make_shared<Frame>())
+  quarter_keyframe_(std::make_shared<Frame>()),
+  iter_(0)
 {
 }
 
@@ -19,7 +20,8 @@ template<typename Tracker>
 PyramidTracker<Tracker>::PyramidTracker(std::shared_ptr<Tracker> tracker) :
   tracker_(tracker),
   half_keyframe_(std::make_shared<Frame>()),
-  quarter_keyframe_(std::make_shared<Frame>())
+  quarter_keyframe_(std::make_shared<Frame>()),
+  iter_(0)
 {
 }
 
@@ -60,7 +62,7 @@ void PyramidTracker<Tracker>::Track(Frame& frame)
   keyframe_->Downsample(*half_keyframe_);
   half_keyframe_->Downsample(*quarter_keyframe_);
 
-  tracker_->SetMaxIterations(5);
+  tracker_->SetMaxIterations(3);
   tracker_->SetTranslationEnabled(false);
   tracker_->SetKeyframe(quarter_keyframe_);
   tracker_->Track(quarter_frame);
@@ -103,9 +105,10 @@ void PyramidTracker<Tracker>::Track(Frame& frame)
   // t[2] = 0.01716002;
 
   // const Transform Tinc = Transform::Translate(t) * Transform::Rotate(R);
-  // frame.Twc = keyframe_->Twc;// * Tinc;
 
-  // tracker_->SetMaxIterations(50);
+  // frame.Twc = keyframe_->Twc * Tinc;
+
+  // tracker_->SetMaxIterations(10);
   // tracker_->SetTranslationEnabled(true);
   // tracker_->SetKeyframe(keyframe_);
   // tracker_->Track(frame);
