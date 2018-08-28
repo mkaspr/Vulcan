@@ -172,7 +172,8 @@ void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
       const float frame_depth = frame_depths[frame_index];
 
       // check if depths values are similar enough
-      if (fabsf(frame_depth - Xcp[2]) < 0.1f)
+      // if (fabsf(frame_depth - Xcp[2]) < 0.1f)
+      if (fabsf(frame_depth - Xcp[2]) < 0.2f)
       {
         // read keyframe and current frame normals
         const Vector3f frame_normal = frame_normals[frame_index];

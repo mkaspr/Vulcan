@@ -44,8 +44,8 @@ int main(int argc, char** argv)
 
   LightIntegrator integrator(volume);
   integrator.SetDepthRange(depth_range);
-  integrator.SetMaxDistanceWeight(200);
-  integrator.SetMaxColorWeight(8);
+  integrator.SetMaxDistanceWeight(32);
+  integrator.SetMaxColorWeight(4);
   integrator.SetLight(light);
 
   // ColorIntegrator integrator(volume);
@@ -95,7 +95,16 @@ int main(int argc, char** argv)
 
   for (int i = frame_start; i <= frame_stop; ++i)
   {
-    // light_tracker->write_ = (i == 135);
+    // if (i == 287)
+    // {
+    //   light_tracker->write_ = true;
+    //   std::cout << "Main::Investigating..." << std::endl;;
+    // }
+    // else
+    // {
+    //   light_tracker->write_ = false;
+    // }
+
 
     const int fid = i;
 
@@ -107,10 +116,10 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/depth_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/depth_";
+      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
       // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
@@ -122,10 +131,10 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/color_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/color_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/color_";
+      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
       // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
@@ -160,7 +169,6 @@ int main(int argc, char** argv)
     }
 
     LOG(INFO) << "Viewing frame " << i << "...";
-    volume->SetView(frame);
     volume->SetView(frame);
 
     LOG(INFO) << "Integrating frame " << i << "...";
