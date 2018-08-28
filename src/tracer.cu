@@ -279,25 +279,37 @@ Vector4f GetInterpolatedDistance(const HashEntry* entries, const Voxel* voxels,
   const float n0 = n00 * w0[1] + n01 * w1[1];
   const float n1 = n10 * w0[1] + n11 * w1[1];
 
-  const Vector3f c000 = v000.GetColor();
-  const Vector3f c001 = v001.GetColor();
-  const Vector3f c010 = v010.GetColor();
-  const Vector3f c011 = v011.GetColor();
-  const Vector3f c100 = v100.GetColor();
-  const Vector3f c101 = v101.GetColor();
-  const Vector3f c110 = v110.GetColor();
-  const Vector3f c111 = v111.GetColor();
+  const float w000 = w0[2] * w0[1] * w0[0] * (v000.color_weight > 0) ? 1 : 0;
+  const float w001 = w0[2] * w0[1] * w1[0] * (v001.color_weight > 0) ? 1 : 0;
+  const float w010 = w0[2] * w1[1] * w0[0] * (v010.color_weight > 0) ? 1 : 0;
+  const float w011 = w0[2] * w1[1] * w1[0] * (v011.color_weight > 0) ? 1 : 0;
+  const float w100 = w1[2] * w0[1] * w0[0] * (v100.color_weight > 0) ? 1 : 0;
+  const float w101 = w1[2] * w0[1] * w1[0] * (v101.color_weight > 0) ? 1 : 0;
+  const float w110 = w1[2] * w1[1] * w0[0] * (v110.color_weight > 0) ? 1 : 0;
+  const float w111 = w1[2] * w1[1] * w1[0] * (v111.color_weight > 0) ? 1 : 0;
 
-  const Vector3f c00 = c000 * w0[0] + c001 * w1[0];
-  const Vector3f c01 = c010 * w0[0] + c011 * w1[0];
-  const Vector3f c10 = c100 * w0[0] + c101 * w1[0];
-  const Vector3f c11 = c110 * w0[0] + c111 * w1[0];
+  float total = 0;
+  total += w000;
+  total += w001;
+  total += w010;
+  total += w011;
+  total += w100;
+  total += w101;
+  total += w110;
+  total += w111;
 
-  const Vector3f c0 = c00 * w0[1] + c01 * w1[1];
-  const Vector3f c1 = c10 * w0[1] + c11 * w1[1];
+  color = Vector3f(0, 0, 0);
+  color += w000 * v000.GetColor();
+  color += w001 * v001.GetColor();
+  color += w010 * v010.GetColor();
+  color += w011 * v011.GetColor();
+  color += w100 * v100.GetColor();
+  color += w101 * v101.GetColor();
+  color += w110 * v110.GetColor();
+  color += w111 * v111.GetColor();
+  if (total > 0) color /= total;
 
   sdf = n0 * w0[2] + n1 * w1[2];
-  color = c0 * w0[2] + c1 * w1[2];
 
   return Vector4f(sdf, color[0], color[1], color[2]);
 }

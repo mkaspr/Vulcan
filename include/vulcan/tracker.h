@@ -4,6 +4,7 @@
 #include <Eigen/Eigen>
 #include <vulcan/buffer.h>
 #include <vulcan/device.h>
+#include <vulcan/matrix.h>
 
 namespace vulcan
 {
@@ -93,7 +94,7 @@ class Tracker
 
     Buffer<float> residuals_;
 
-    Buffer<float> jacobian_;
+    Buffer<Vector6f> jacobian_;
 
     Buffer<float> hessian_;
 

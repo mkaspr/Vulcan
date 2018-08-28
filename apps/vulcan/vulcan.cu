@@ -38,20 +38,20 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating integrator...";
 
-  // Light light;
-  // light.SetIntensity(2.0f);
-  // light.SetPosition(0.1f, 0.0f, 0.0f);
+  Light light;
+  light.SetIntensity(2.0f);
+  light.SetPosition(0.1f, 0.0f, 0.0f);
 
-  // LightIntegrator integrator(volume);
-  // integrator.SetDepthRange(depth_range);
-  // integrator.SetMaxDistanceWeight(200);
-  // integrator.SetMaxColorWeight(16);
-  // integrator.SetLight(light);
-
-  ColorIntegrator integrator(volume);
+  LightIntegrator integrator(volume);
   integrator.SetDepthRange(depth_range);
-  integrator.SetMaxDistanceWeight(32);
-  integrator.SetMaxColorWeight(16);
+  integrator.SetMaxDistanceWeight(200);
+  integrator.SetMaxColorWeight(8);
+  integrator.SetLight(light);
+
+  // ColorIntegrator integrator(volume);
+  // integrator.SetDepthRange(depth_range);
+  // integrator.SetMaxDistanceWeight(32);
+  // integrator.SetMaxColorWeight(16);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -60,15 +60,15 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  PyramidTracker<DepthTracker> tracker;
+  // PyramidTracker<DepthTracker> tracker;
   // PyramidTracker<ColorTracker> tracker;
 
-  // std::shared_ptr<LightTracker> light_tracker;
-  // light_tracker = std::make_shared<LightTracker>();
-  // light_tracker->SetLight(light);
-  // PyramidTracker<LightTracker> tracker(light_tracker);
-  // // LightTracker& tracker = *light_tracker;
-  // // tracker.SetMaxIterations(1);
+  std::shared_ptr<LightTracker> light_tracker;
+  light_tracker = std::make_shared<LightTracker>();
+  light_tracker->SetLight(light);
+  PyramidTracker<LightTracker> tracker(light_tracker);
+  // LightTracker& tracker = *light_tracker;
+  // tracker.SetMaxIterations(1);
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -105,7 +105,8 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/depth_";
       // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
@@ -118,7 +119,8 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/color_";
+      buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/color_";
       // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
       buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
       // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
@@ -154,6 +156,7 @@ int main(int argc, char** argv)
     }
 
     LOG(INFO) << "Viewing frame " << i << "...";
+    volume->SetView(frame);
     volume->SetView(frame);
 
     LOG(INFO) << "Integrating frame " << i << "...";

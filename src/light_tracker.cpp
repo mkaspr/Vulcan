@@ -4,10 +4,14 @@
 #include <thrust/device_ptr.h>
 #include <thrust/host_vector.h>
 
+#include <fstream>
+#include <sstream>
+
 namespace vulcan
 {
 
-LightTracker::LightTracker()
+LightTracker::LightTracker() :
+  frame_(0)
 {
 }
 
@@ -31,6 +35,7 @@ void LightTracker::BeginSolve(const Frame& frame)
   ComputeKeyframeIntensities();
   ComputeFrameIntensities(frame);
   ComputeFrameGradients(frame);
+  ComputeFrameMask(frame);
 }
 
 int LightTracker::GetResidualCount(const Frame& frame) const
@@ -104,6 +109,57 @@ void LightTracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
   t[2] = M(2, 3);
 
   frame.Twc = (Transform::Translate(t) * Transform::Rotate(R)).Inverse();
+}
+
+void LightTracker::WriteDataFiles(const Frame& frame)
+{
+  ComputeResiduals(frame, residuals_);
+  ComputeJacobian(frame, jacobian_);
+
+  {
+    std::vector<float> residuals(residuals_.GetSize());
+    residuals_.CopyToHost(residuals.data());
+
+    std::stringstream file;
+    file << "residuals_";
+    file << std::setw(2) << std::setfill('0') << frame_;
+    file << ".txt";
+
+    std::ofstream stream(file.str());
+
+    for (float residual : residuals)
+    {
+      stream << residual << std::endl;
+    }
+
+    stream.close();
+  }
+
+  {
+    std::vector<Vector6f> jacobian(jacobian_.GetSize());
+    jacobian_.CopyToHost(jacobian.data());
+
+    std::stringstream file;
+    file << "jacobian_";
+    file << std::setw(2) << std::setfill('0') << frame_;
+    file << ".txt";
+
+    std::ofstream stream(file.str());
+
+    for (const Vector6f& J : jacobian)
+    {
+      for (int i = 0; i < 5; ++i)
+      {
+        stream << J[i] << " ";
+      }
+
+      stream << J[5] << std::endl;
+    }
+
+    stream.close();
+  }
+
+  frame_++;
 }
 
 } // namespace vulcan

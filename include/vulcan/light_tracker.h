@@ -27,6 +27,8 @@ class LightTracker : public Tracker
 
     void BeginSolve(const Frame& frame) override;
 
+    void ComputeFrameMask(const Frame& frame);
+
     int GetResidualCount(const Frame &frame) const override;
 
     void ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const override;
@@ -39,9 +41,13 @@ class LightTracker : public Tracker
 
     void ComputeFrameGradients(const Frame& frame);
 
+    void WriteDataFiles(const Frame& frame);
+
   protected:
 
     Light light_;
+
+    Image frame_mask_;
 
     Image keyframe_intensities_;
 
@@ -50,6 +56,8 @@ class LightTracker : public Tracker
     Image frame_gradient_x_;
 
     Image frame_gradient_y_;
+
+    int frame_;
 };
 
 } // namespace vulcan

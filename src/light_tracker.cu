@@ -16,6 +16,22 @@ namespace vulcan
 namespace
 {
 
+VULCAN_GLOBAL
+void ComputeFrameMaskKernel(int total, const Vector3f* src, float* dst)
+{
+  const int index = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (index < total)
+  {
+    const Vector3f value = src[index];
+
+    const bool mask = value[0] > 0.02f && value[0] < 0.98f &&
+                      value[1] > 0.02f && value[1] < 0.98f &&
+                      value[2] > 0.02f && value[2] < 0.98f;
+
+    dst[index] = (mask) ? 1 : 0;
+  }
+}
 
 VULCAN_DEVICE
 float Sample(int w, int h, const float* values, float u, float v)
@@ -48,11 +64,12 @@ VULCAN_DEVICE
 void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
     const float* keyframe_depths, const Vector3f* keyframe_normals,
     const float* keyframe_albedos, const Projection& keyframe_projection,
-    int keyframe_width, int keyframe_height, const float* frame_depths,
-    const Vector3f* frame_normals, const float* frame_intensities,
-    const float* frame_gradient_x, const float* frame_gradient_y,
-    const Projection& frame_projection, int frame_width, int frame_height,
-    const Light& light, float* residual, Vector6f* jacobian)
+    int keyframe_width, int keyframe_height, const float* frame_mask,
+    const float* frame_depths, const Vector3f* frame_normals,
+    const float* frame_intensities, const float* frame_gradient_x,
+    const float* frame_gradient_y, const Projection& frame_projection,
+    int frame_width, int frame_height, const Light& light, float* residual,
+    Vector6f* jacobian)
 {
   VULCAN_DEBUG(keyframe_x >= 0 && keyframe_x < keyframe_width);
   VULCAN_DEBUG(keyframe_y >= 0 && keyframe_y < keyframe_height);
@@ -76,10 +93,12 @@ void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
     {
       const int frame_x = frame_uv[0];
       const int frame_y = frame_uv[1];
+
       const int frame_index = frame_y * frame_width + frame_x;
       const float frame_depth = frame_depths[frame_index];
+      const float mask = frame_mask[frame_index];
 
-      if (fabsf(frame_depth - Xcp[2]) < 0.1f)
+      if (mask > 0.5f && fabsf(frame_depth - Xcp[2]) < 0.1f)
       {
         const Vector3f frame_normal = frame_normals[frame_index];
         Vector3f keyframe_normal = keyframe_normals[keyframe_index];
@@ -153,7 +172,7 @@ VULCAN_GLOBAL
 void ComputeResidualsKernel(const Transform Tcm, const float* keyframe_depths,
     const Vector3f* keyframe_normals, const float* keyframe_albedos,
     const Projection keyframe_projection, int keyframe_width,
-    int keyframe_height, const float* frame_depths,
+    int keyframe_height, const float* frame_mask, const float* frame_depths,
     const Vector3f* frame_normals, const float* frame_intensities,
     const Projection frame_projection, int frame_width, int frame_height,
     const Light light, float* residuals)
@@ -167,9 +186,9 @@ void ComputeResidualsKernel(const Transform Tcm, const float* keyframe_depths,
 
     Evaluate<false>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
         keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
-        keyframe_height, frame_depths, frame_normals, frame_intensities,
-        nullptr, nullptr, frame_projection, frame_width, frame_height, light,
-        &residual, nullptr);
+        keyframe_height, frame_mask, frame_depths, frame_normals,
+        frame_intensities, nullptr, nullptr, frame_projection, frame_width,
+        frame_height, light, &residual, nullptr);
 
     residuals[keyframe_y * keyframe_width + keyframe_x] = residual;
   }
@@ -180,7 +199,7 @@ VULCAN_GLOBAL
 void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
     const Vector3f* keyframe_normals, const float* keyframe_albedos,
     const Projection keyframe_projection, int keyframe_width,
-    int keyframe_height, const float* frame_depths,
+    int keyframe_height, const float* frame_mask, const float* frame_depths,
     const Vector3f* frame_normals, const float* frame_intensities,
     const float* frame_gradient_x, const float* frame_gradient_y,
     const Projection frame_projection, int frame_width, int frame_height,
@@ -195,9 +214,9 @@ void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
 
     Evaluate<translation_enabled>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
         keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
-        keyframe_height, frame_depths, frame_normals, frame_intensities,
-        frame_gradient_x, frame_gradient_y, frame_projection, frame_width,
-        frame_height, light, nullptr, &dfdx);
+        keyframe_height, frame_mask, frame_depths, frame_normals,
+        frame_intensities, frame_gradient_x, frame_gradient_y, frame_projection,
+        frame_width, frame_height, light, nullptr, &dfdx);
 
     jacobian[keyframe_y * keyframe_width + keyframe_x] = dfdx;
   }
@@ -208,7 +227,7 @@ VULCAN_GLOBAL
 void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
     const Vector3f* keyframe_normals, const float* keyframe_albedos,
     const Projection keyframe_projection, int keyframe_width,
-    int keyframe_height, const float* frame_depths,
+    int keyframe_height, const float* frame_mask, const float* frame_depths,
     const Vector3f* frame_normals, const float* frame_intensities,
     const float* frame_gradient_x, const float* frame_gradient_y,
     const Projection frame_projection, int frame_width, int frame_height,
@@ -228,10 +247,10 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
   if (keyframe_x < keyframe_width && keyframe_y < keyframe_height)
   {
     Evaluate<translation_enabled>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
-    keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
-    keyframe_height, frame_depths, frame_normals, frame_intensities,
-    frame_gradient_x, frame_gradient_y, frame_projection, frame_width,
-    frame_height, light, &residual, &dfdx);
+        keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
+        keyframe_height, frame_mask, frame_depths, frame_normals,
+        frame_intensities, frame_gradient_x, frame_gradient_y, frame_projection,
+        frame_width, frame_height, light, &residual, &dfdx);
   }
 
   const int parameter_count = translation_enabled ? 6 : 3;
@@ -351,6 +370,22 @@ void LightTracker::ComputeFrameGradients(const Frame& frame)
   frame_intensities_.GetGradients(frame_gradient_x_, frame_gradient_y_);
 }
 
+void LightTracker::ComputeFrameMask(const Frame& frame)
+{
+  const int w = frame.depth_image->GetWidth();
+  const int h = frame.depth_image->GetHeight();
+
+  const int total = w * h;
+  const int threads = 512;
+  const int blocks = GetKernelBlocks(total, threads);
+
+  frame_mask_.Resize(w, h);
+  const Vector3f* src = frame.color_image->GetData();
+  float* dst = frame_mask_.GetData();
+
+  CUDA_LAUNCH(ComputeFrameMaskKernel, blocks, threads, 0, 0, total, src, dst);
+}
+
 void LightTracker::ComputeResiduals(const Frame& frame,
     Buffer<float>& residuals)
 {
@@ -361,6 +396,7 @@ void LightTracker::ComputeResiduals(const Frame& frame,
   const int frame_height = frame.depth_image->GetHeight();
   const int keyframe_width = keyframe_->depth_image->GetWidth();
   const int keyframe_height = keyframe_->depth_image->GetHeight();
+  const float* frame_mask = frame_mask_.GetData();
   const float* frame_depths = frame.depth_image->GetData();
   const float* keyframe_intensities = keyframe_intensities_.GetData();
   const float* frame_intensities = frame_intensities_.GetData();
@@ -380,9 +416,9 @@ void LightTracker::ComputeResiduals(const Frame& frame,
 
   CUDA_LAUNCH(ComputeResidualsKernel, blocks, threads, 0, 0, Tcm,
       keyframe_depths, keyframe_normals, keyframe_intensities,
-      keyframe_projection, keyframe_width, keyframe_height, frame_depths,
-      frame_normals, frame_intensities, frame_projection, frame_width,
-      frame_height, light_, d_residuals);
+      keyframe_projection, keyframe_width, keyframe_height, frame_mask,
+      frame_depths, frame_normals, frame_intensities, frame_projection,
+      frame_width, frame_height, light_, d_residuals);
 }
 
 void LightTracker::ComputeJacobian(const Frame& frame,
@@ -396,6 +432,7 @@ void LightTracker::ComputeJacobian(const Frame& frame,
   const int frame_height = frame.depth_image->GetHeight();
   const int keyframe_width = keyframe_->depth_image->GetWidth();
   const int keyframe_height = keyframe_->depth_image->GetHeight();
+  const float* frame_mask = frame_mask_.GetData();
   const float* frame_depths = frame.depth_image->GetData();
   const float* keyframe_intensities = keyframe_intensities_.GetData();
   const float* frame_intensities = frame_intensities_.GetData();
@@ -419,26 +456,31 @@ void LightTracker::ComputeJacobian(const Frame& frame,
   {
     CUDA_LAUNCH(ComputeJacobianKernel<true>, blocks, threads, 0, 0, Tcm,
         keyframe_depths, keyframe_normals, keyframe_intensities,
-        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
-        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, light_, d_jacobian);
+        keyframe_projection, keyframe_width, keyframe_height, frame_mask,
+        frame_depths, frame_normals, frame_intensities, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height, light_,
+        d_jacobian);
   }
   else
   {
     CUDA_LAUNCH(ComputeJacobianKernel<false>, blocks, threads, 0, 0, Tcm,
         keyframe_depths, keyframe_normals, keyframe_intensities,
-        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
-        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, light_, d_jacobian);
+        keyframe_projection, keyframe_width, keyframe_height, frame_mask,
+        frame_depths, frame_normals, frame_intensities, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height, light_,
+        d_jacobian);
   }
 }
 
 void LightTracker::ComputeSystem(const Frame& frame)
 {
+  // WriteDataFiles(frame);
+
   const int frame_width = frame.depth_image->GetWidth();
   const int frame_height = frame.depth_image->GetHeight();
   const int keyframe_width = keyframe_->depth_image->GetWidth();
   const int keyframe_height = keyframe_->depth_image->GetHeight();
+  const float* frame_mask = frame_mask_.GetData();
   const float* frame_depths = frame.depth_image->GetData();
   const float* keyframe_intensities = keyframe_intensities_.GetData();
   const float* frame_intensities = frame_intensities_.GetData();
@@ -466,17 +508,19 @@ void LightTracker::ComputeSystem(const Frame& frame)
   {
     CUDA_LAUNCH(ComputeSystemKernel<true>, blocks, threads, 0, 0, Tcm,
         keyframe_depths, keyframe_normals, keyframe_intensities,
-        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
-        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, light_, hessian, gradient);
+        keyframe_projection, keyframe_width, keyframe_height, frame_mask,
+        frame_depths, frame_normals, frame_intensities, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height, light_,
+        hessian, gradient);
   }
   else
   {
     CUDA_LAUNCH(ComputeSystemKernel<false>, blocks, threads, 0, 0, Tcm,
         keyframe_depths, keyframe_normals, keyframe_intensities,
-        keyframe_projection, keyframe_width, keyframe_height, frame_depths,
-        frame_normals, frame_intensities, frame_gradient_x, frame_gradient_y,
-        frame_projection, frame_width, frame_height, light_, hessian, gradient);
+        keyframe_projection, keyframe_width, keyframe_height, frame_mask,
+        frame_depths, frame_normals, frame_intensities, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height, light_,
+        hessian, gradient);
   }
 }
 
