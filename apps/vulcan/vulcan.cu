@@ -45,7 +45,7 @@ int main(int argc, char** argv)
   LightIntegrator integrator(volume);
   integrator.SetDepthRange(depth_range);
   integrator.SetMaxDistanceWeight(200);
-  integrator.SetMaxColorWeight(8);
+  integrator.SetMaxColorWeight(4);
   integrator.SetLight(light);
 
   // ColorIntegrator integrator(volume);

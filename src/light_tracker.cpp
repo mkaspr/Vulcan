@@ -11,6 +11,7 @@ namespace vulcan
 {
 
 LightTracker::LightTracker() :
+  depth_threshold_(0.25f),
   frame_(0)
 {
 }

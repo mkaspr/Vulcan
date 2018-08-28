@@ -60,7 +60,7 @@ void PyramidTracker<Tracker>::Track(Frame& frame)
   keyframe_->Downsample(*half_keyframe_);
   half_keyframe_->Downsample(*quarter_keyframe_);
 
-  tracker_->SetMaxIterations(3);
+  tracker_->SetMaxIterations(5);
   tracker_->SetTranslationEnabled(false);
   tracker_->SetKeyframe(quarter_keyframe_);
   tracker_->Track(quarter_frame);
@@ -84,28 +84,28 @@ void PyramidTracker<Tracker>::Track(Frame& frame)
 
   // Matrix3f R;
 
-  // R(0, 0) = 0.99999958;
-  // R(1, 0) = -0.00072548;
-  // R(2, 0) = -0.00055976;
+  // R(0, 0) = 1.00000070;
+  // R(1, 0) = 0.00021569;
+  // R(2, 0) = -0.00036980;
 
-  // R(0, 1) = 0.00073115;
-  // R(1, 1) = 0.99996499;
-  // R(2, 1) = 0.00842588;
+  // R(0, 1) = -0.00021233;
+  // R(1, 1) = 0.99994549;
+  // R(2, 1) = 0.01043146;
 
-  // R(0, 2) = 0.00055528;
-  // R(1, 2) = -0.00842661;
-  // R(2, 2) = 0.99996420;
+  // R(0, 2) = 0.00037226;
+  // R(1, 2) = -0.01043150;
+  // R(2, 2) = 0.99994517;
 
   // Vector3f t;
 
-  // t[0] = 0.00008910;
-  // t[1] = 0.00093089;
-  // t[2] = 0.01704843;
+  // t[0] = 0.00045346;
+  // t[1] = 0.00161962;
+  // t[2] = 0.01716002;
 
   // const Transform Tinc = Transform::Translate(t) * Transform::Rotate(R);
-  // frame.Twc = keyframe_->Twc * Tinc;
+  // frame.Twc = keyframe_->Twc;// * Tinc;
 
-  // tracker_->SetMaxIterations(5);
+  // tracker_->SetMaxIterations(50);
   // tracker_->SetTranslationEnabled(true);
   // tracker_->SetKeyframe(keyframe_);
   // tracker_->Track(frame);

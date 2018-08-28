@@ -16,20 +16,91 @@ namespace vulcan
 namespace
 {
 
+template <int BLOCK_DIM, int KERNEL_SIZE>
 VULCAN_GLOBAL
-void ComputeFrameMaskKernel(int total, const Vector3f* src, float* dst)
+void ComputeFrameMaskKernel(int width, int height, const float* depths,
+    const Vector3f* colors, float depth_threshold, float* mask)
 {
-  const int index = blockIdx.x * blockDim.x + threadIdx.x;
+  // allocate shared memory
+  const int buffer_dim = BLOCK_DIM + 2 * KERNEL_SIZE;
+  const int buffer_size = buffer_dim * buffer_dim;
+  VULCAN_SHARED float buffer[buffer_size];
 
-  if (index < total)
+  // get launch indices
+  const int x = blockIdx.x * blockDim.x + threadIdx.x;
+  const int y = blockIdx.y * blockDim.y + threadIdx.y;
+  int sindex = threadIdx.y * blockDim.x + threadIdx.x;
+  const int block_size = blockDim.x * blockDim.y;
+
+  // copy image patch to shared memory
+  do
   {
-    const Vector3f value = src[index];
+    // initialize default value
+    float depth = 0;
 
-    const bool mask = value[0] > 0.02f && value[0] < 0.98f &&
-                      value[1] > 0.02f && value[1] < 0.98f &&
-                      value[2] > 0.02f && value[2] < 0.98f;
+    // get source image indices
+    const int vx = (blockIdx.x * blockDim.x - 1) + (sindex % buffer_dim);
+    const int vy = (blockIdx.y * blockDim.y - 1) + (sindex / buffer_dim);
 
-    dst[index] = (mask) ? 1 : 0;
+    // check if within image bounds
+    if (vx >= 0 && vx < width && vy >= 0 && vy < height)
+    {
+      // read value from global memory
+      depth = depths[vy * width + vx];
+    }
+
+    // store value in shared memory
+    buffer[sindex] = depth;
+
+    // advance to next shared index
+    sindex += block_size;
+  }
+  while (sindex < buffer_size);
+
+  // wait for all threads to finish
+  __syncthreads();
+
+  // check if current thread within image bounds
+  if (x < width && y < height)
+  {
+    // fetch pixel color from global memory
+    const int index = y * width + x;
+    const Vector3f value = colors[index];
+
+    // check if pixel is improperly saturated
+    if (value[0] < 0.02f || value[0] > 0.98f ||
+        value[1] < 0.02f || value[1] > 0.98f ||
+        value[2] < 0.02f || value[2] > 0.98f)
+    {
+      // store failure and exit
+      mask[index] = false;
+      return;
+    }
+
+    // initial extrema
+    float dmin = +FLT_MAX;
+    float dmax = -FLT_MAX;
+
+    // get kernel center index
+    const int cx = threadIdx.x + KERNEL_SIZE;
+    const int cy = threadIdx.y + KERNEL_SIZE;
+
+    // search over entire kernel patch
+    for (int i = -KERNEL_SIZE; i <= KERNEL_SIZE; ++i)
+    {
+      for (int j = -KERNEL_SIZE; j <= KERNEL_SIZE; ++j)
+      {
+        // read depth from shared memory
+        const float depth = buffer[(cy + i) * buffer_dim + (cx + j)];
+
+        // update extrema
+        dmin = fminf(depth, dmin);
+        dmax = fmaxf(depth, dmax);
+      }
+    }
+
+    // store result of depth discontinuity check
+    mask[index] = (dmax - dmin <= depth_threshold);
   }
 }
 
@@ -375,15 +446,17 @@ void LightTracker::ComputeFrameMask(const Frame& frame)
   const int w = frame.depth_image->GetWidth();
   const int h = frame.depth_image->GetHeight();
 
-  const int total = w * h;
-  const int threads = 512;
-  const int blocks = GetKernelBlocks(total, threads);
+  const dim3 total(w, h);
+  const dim3 threads(16, 16);
+  const dim3 blocks = GetKernelBlocks(total, threads);
 
   frame_mask_.Resize(w, h);
-  const Vector3f* src = frame.color_image->GetData();
-  float* dst = frame_mask_.GetData();
+  const float* depths = frame.depth_image->GetData();
+  const Vector3f* colors = frame.color_image->GetData();
+  float* mask = frame_mask_.GetData();
 
-  CUDA_LAUNCH(ComputeFrameMaskKernel, blocks, threads, 0, 0, total, src, dst);
+  CUDA_LAUNCH((ComputeFrameMaskKernel<16, 3>), blocks, threads, 0, 0, w, h,
+      depths, colors, depth_threshold_, mask);
 }
 
 void LightTracker::ComputeResiduals(const Frame& frame,

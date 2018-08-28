@@ -57,6 +57,8 @@ class LightTracker : public Tracker
 
     Image frame_gradient_y_;
 
+    float depth_threshold_;
+
     int frame_;
 };
 
