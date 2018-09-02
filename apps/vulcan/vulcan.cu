@@ -38,20 +38,26 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating integrator...";
 
-  Light light;
-  light.SetIntensity(2.0f);
-  light.SetPosition(0.1f, 0.0f, 0.0f);
-
-  LightIntegrator integrator(volume);
+  DepthIntegrator integrator(volume);
   integrator.SetDepthRange(depth_range);
   integrator.SetMaxDistanceWeight(32);
-  integrator.SetMaxColorWeight(4);
-  integrator.SetLight(light);
 
   // ColorIntegrator integrator(volume);
   // integrator.SetDepthRange(depth_range);
   // integrator.SetMaxDistanceWeight(32);
   // integrator.SetMaxColorWeight(16);
+
+  // Light light;
+  // // light.SetIntensity(2.0f);
+  // // light.SetPosition(0.1f, 0.0f, 0.0f);
+  // light.SetIntensity(4.0f);
+  // light.SetPosition(0.025f, 0.080f, 0.00f);
+
+  // LightIntegrator integrator(volume);
+  // integrator.SetDepthRange(depth_range);
+  // integrator.SetMaxDistanceWeight(32);
+  // integrator.SetMaxColorWeight(4);
+  // integrator.SetLight(light);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -60,15 +66,15 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  // PyramidTracker<DepthTracker> tracker;
+  PyramidTracker<DepthTracker> tracker;
   // PyramidTracker<ColorTracker> tracker;
 
-  std::shared_ptr<LightTracker> light_tracker;
-  light_tracker = std::make_shared<LightTracker>();
-  light_tracker->SetLight(light);
-  PyramidTracker<LightTracker> tracker(light_tracker);
-  // LightTracker& tracker = *light_tracker;
-  // tracker.SetMaxIterations(1);
+  // std::shared_ptr<LightTracker> light_tracker;
+  // light_tracker = std::make_shared<LightTracker>();
+  // light_tracker->SetLight(light);
+  // PyramidTracker<LightTracker> tracker(light_tracker);
+  // // LightTracker& tracker = *light_tracker;
+  // // tracker.SetMaxIterations(1);
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -116,28 +122,33 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
+      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/depth_";
-      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
-      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
+      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      // buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel1_";
+      // buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
       LOG(INFO) << "Loading depth image: " << buffer.str();
       depth_image->Load(buffer.str(), 1.0 / 1000.0);
+      // depth_image->Load(buffer.str(), 1.0 / 10000.0);
       VULCAN_ASSERT(depth_image->GetHeight() == h);
       VULCAN_ASSERT(depth_image->GetWidth() == w);
     }
 
     {
       std::stringstream buffer;
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/color_";
+      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/color_";
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/color_";
-      buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
-      buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
+      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      // buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel0_";
+      // buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);
       VULCAN_ASSERT(color_image->GetHeight() == h);
