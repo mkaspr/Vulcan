@@ -79,7 +79,7 @@ void LightTracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
   Tinc(3, 2) = 0.0;
   Tinc(3, 3) = 1.0;
 
-  const Matrix4f M = Tinc * frame.Twc.GetInverseMatrix();
+  const Matrix4f M = Tinc * frame.depth_to_world_transform.GetInverseMatrix();
 
   Vector3f x_axis(M(0, 0), M(1, 0), M(2, 0));
   Vector3f y_axis(M(0, 1), M(1, 1), M(2, 1));
@@ -110,13 +110,14 @@ void LightTracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
   t[1] = M(1, 3);
   t[2] = M(2, 3);
 
-  frame.Twc = (Transform::Translate(t) * Transform::Rotate(R)).Inverse();
+  frame.depth_to_world_transform = (Transform::Translate(t) * Transform::Rotate(R)).Inverse();
 }
 
 void LightTracker::WriteDataFiles(const Frame& frame)
 {
   ComputeResiduals(frame, residuals_);
   ComputeJacobian(frame, jacobian_);
+  WriteImage(frame);
 
   {
     std::vector<float> residuals(residuals_.GetSize());
@@ -162,6 +163,19 @@ void LightTracker::WriteDataFiles(const Frame& frame)
   }
 
   frame_++;
+}
+
+void LightTracker::WriteImage(const Frame& frame)
+{
+  std::stringstream file;
+  file << "render_";
+  file << std::setw(2) << std::setfill('0') << frame_;
+  file << ".png";
+
+  // Image image;
+  ColorImage image;
+  TraceImage(frame, image);
+  image.Save(file.str(), CV_8UC3, 255.0);
 }
 
 } // namespace vulcan

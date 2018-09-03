@@ -5,6 +5,19 @@
 namespace vulcan
 {
 
+void Frame::FilterDepths()
+{
+  VULCAN_ASSERT_MSG(depth_image, "missing depth image");
+
+  const int w = depth_image->GetWidth();
+  const int h = depth_image->GetHeight();
+  Image temp(depth_image->GetWidth(), depth_image->GetHeight());
+  float* src = depth_image->GetData();
+  float* dst = temp.GetData();
+  vulcan::FilterDepths(w, h, src, dst);
+  CUDA_DEBUG(cudaMemcpy(src, dst, temp.GetBytes(), cudaMemcpyDeviceToDevice));
+}
+
 void Frame::ComputeNormals()
 {
   VULCAN_ASSERT_MSG(depth_image, "missing depth image");
@@ -19,7 +32,7 @@ void Frame::ComputeNormals()
   normal_image->Resize(w, h);
   const float* depths = depth_image->GetData();
   Vector3f* normals = normal_image->GetData();
-  vulcan::ComputeNormals(depths, projection, normals, w, h);
+  vulcan::ComputeNormals(depths, depth_projection, normals, w, h);
 }
 
 void Frame::Downsample(Frame& frame) const
@@ -36,9 +49,13 @@ void Frame::Downsample(Frame& frame) const
   color_image->Downsample(*frame.color_image, false);
   normal_image->Downsample(*frame.normal_image, true);
 
-  frame.projection.SetFocalLength(projection.GetFocalLength() / 2);
-  frame.projection.SetCenterPoint(projection.GetCenterPoint() / 2);
-  frame.Twc = Twc;
+  frame.depth_projection.SetFocalLength(depth_projection.GetFocalLength() / 2);
+  frame.depth_projection.SetCenterPoint(depth_projection.GetCenterPoint() / 2);
+  frame.color_projection.SetFocalLength(color_projection.GetFocalLength() / 2);
+  frame.color_projection.SetCenterPoint(color_projection.GetCenterPoint() / 2);
+  frame.depth_to_world_transform = depth_to_world_transform;
+  frame.depth_to_color_transform = depth_to_color_transform;
 }
+
 
 } // namespace vulcan

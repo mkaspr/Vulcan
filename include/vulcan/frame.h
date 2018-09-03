@@ -10,19 +10,21 @@ namespace vulcan
 
 struct Frame
 {
-  Transform Twc;
+  Projection depth_projection;
 
-  Projection projection;
+  Projection color_projection;
 
-  // TODO: add separate color transform
+  Transform depth_to_world_transform;
 
-  // TODO: add separate color projection
+  Transform depth_to_color_transform;
 
   std::shared_ptr<Image> depth_image;
 
   std::shared_ptr<ColorImage> color_image;
 
   std::shared_ptr<ColorImage> normal_image;
+
+  void FilterDepths();
 
   void ComputeNormals();
 

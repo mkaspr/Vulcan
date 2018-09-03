@@ -51,7 +51,7 @@ void DepthTracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
   Tinc(3, 2) = 0.0;
   Tinc(3, 3) = 1.0;
 
-  const Matrix4f M = Tinc * frame.Twc.GetMatrix();
+  const Matrix4f M = Tinc * frame.depth_to_world_transform.GetMatrix();
 
   Vector3f x_axis(M(0, 0), M(1, 0), M(2, 0));
   Vector3f y_axis(M(0, 1), M(1, 1), M(2, 1));
@@ -82,7 +82,7 @@ void DepthTracker::ApplyUpdate(Frame& frame, Eigen::VectorXf& x) const
   t[1] = M(1, 3);
   t[2] = M(2, 3);
 
-  frame.Twc = Transform::Translate(t) * Transform::Rotate(R);
+  frame.depth_to_world_transform = Transform::Translate(t) * Transform::Rotate(R);
 }
 
 } // namespace vulcan

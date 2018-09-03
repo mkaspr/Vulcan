@@ -133,14 +133,14 @@ float Sample(int w, int h, const float* values, float u, float v)
 template <bool translation_enabled>
 VULCAN_DEVICE
 void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
-    const float* keyframe_depths, const Vector3f* keyframe_normals,
-    const float* keyframe_albedos, const Projection& keyframe_projection,
-    int keyframe_width, int keyframe_height, const float* frame_mask,
-    const float* frame_depths, const Vector3f* frame_normals,
-    const float* frame_intensities, const float* frame_gradient_x,
-    const float* frame_gradient_y, const Projection& frame_projection,
-    int frame_width, int frame_height, const Light& light, float* residual,
-    Vector6f* jacobian)
+    const Transform& Tcd, const float* keyframe_depths,
+    const Vector3f* keyframe_normals, const float* keyframe_albedos,
+    const Projection& keyframe_projection, int keyframe_width,
+    int keyframe_height, const float* frame_mask, const float* frame_depths,
+    const Vector3f* frame_normals, const float* frame_intensities,
+    const float* frame_gradient_x, const float* frame_gradient_y,
+    const Projection& frame_projection, int frame_width, int frame_height,
+    const Light& light, float* residual, Vector6f* jacobian)
 {
   VULCAN_DEBUG(keyframe_x >= 0 && keyframe_x < keyframe_width);
   VULCAN_DEBUG(keyframe_y >= 0 && keyframe_y < keyframe_height);
@@ -176,7 +176,8 @@ void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
       if (fabsf(frame_depth - Xcp[2]) < 0.2f)
       {
         // read keyframe and current frame normals
-        const Vector3f frame_normal = frame_normals[frame_index];
+        const Vector3f frame_Xdn = frame_normals[frame_index];
+        const Vector3f frame_normal = Vector3f(Tcd * Vector4f(frame_Xdn, 0));
         Vector3f keyframe_normal = keyframe_normals[keyframe_index];
         keyframe_normal = Vector3f(Tcm * Vector4f(keyframe_normal, 0));
 
@@ -246,6 +247,9 @@ void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
               }
             }
           }
+
+          // TODO: enable and handle RGB-D extrinsics
+
           // default to standard depth tracking
           else
           {
@@ -293,13 +297,13 @@ void Evaluate(int keyframe_x, int keyframe_y, const Transform& Tcm,
 }
 
 VULCAN_GLOBAL
-void ComputeResidualsKernel(const Transform Tcm, const float* keyframe_depths,
-    const Vector3f* keyframe_normals, const float* keyframe_albedos,
-    const Projection keyframe_projection, int keyframe_width,
-    int keyframe_height, const float* frame_mask, const float* frame_depths,
-    const Vector3f* frame_normals, const float* frame_intensities,
-    const Projection frame_projection, int frame_width, int frame_height,
-    const Light light, float* residuals)
+void ComputeResidualsKernel(const Transform Tcm, const Transform Tcd,
+    const float* keyframe_depths, const Vector3f* keyframe_normals,
+    const float* keyframe_albedos, const Projection keyframe_projection,
+    int keyframe_width, int keyframe_height, const float* frame_mask,
+    const float* frame_depths, const Vector3f* frame_normals,
+    const float* frame_intensities, const Projection frame_projection,
+    int frame_width, int frame_height, const Light light, float* residuals)
 {
   const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -308,7 +312,7 @@ void ComputeResidualsKernel(const Transform Tcm, const float* keyframe_depths,
   {
     float residual = 0;
 
-    Evaluate<false>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
+    Evaluate<false>(keyframe_x, keyframe_y, Tcm, Tcd, keyframe_depths,
         keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
         keyframe_height, frame_mask, frame_depths, frame_normals,
         frame_intensities, nullptr, nullptr, frame_projection, frame_width,
@@ -320,14 +324,14 @@ void ComputeResidualsKernel(const Transform Tcm, const float* keyframe_depths,
 
 template <bool translation_enabled>
 VULCAN_GLOBAL
-void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
-    const Vector3f* keyframe_normals, const float* keyframe_albedos,
-    const Projection keyframe_projection, int keyframe_width,
-    int keyframe_height, const float* frame_mask, const float* frame_depths,
-    const Vector3f* frame_normals, const float* frame_intensities,
-    const float* frame_gradient_x, const float* frame_gradient_y,
-    const Projection frame_projection, int frame_width, int frame_height,
-    const Light light, Vector6f* jacobian)
+void ComputeJacobianKernel(const Transform Tcm, const Transform Tcd,
+    const float* keyframe_depths, const Vector3f* keyframe_normals,
+    const float* keyframe_albedos, const Projection keyframe_projection,
+    int keyframe_width, int keyframe_height, const float* frame_mask,
+    const float* frame_depths, const Vector3f* frame_normals,
+    const float* frame_intensities, const float* frame_gradient_x,
+    const float* frame_gradient_y, const Projection frame_projection,
+    int frame_width, int frame_height, const Light light, Vector6f* jacobian)
 {
   const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
   const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -336,11 +340,12 @@ void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
   {
     Vector6f dfdx = Vector6f::Zeros();
 
-    Evaluate<translation_enabled>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
-        keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
-        keyframe_height, frame_mask, frame_depths, frame_normals,
-        frame_intensities, frame_gradient_x, frame_gradient_y, frame_projection,
-        frame_width, frame_height, light, nullptr, &dfdx);
+    Evaluate<translation_enabled>(keyframe_x, keyframe_y, Tcm, Tcd,
+        keyframe_depths, keyframe_normals, keyframe_albedos,
+        keyframe_projection, keyframe_width, keyframe_height, frame_mask,
+        frame_depths, frame_normals, frame_intensities, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height, light,
+        nullptr, &dfdx);
 
     jacobian[keyframe_y * keyframe_width + keyframe_x] = dfdx;
   }
@@ -348,14 +353,15 @@ void ComputeJacobianKernel(const Transform Tcm, const float* keyframe_depths,
 
 template <bool translation_enabled>
 VULCAN_GLOBAL
-void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
-    const Vector3f* keyframe_normals, const float* keyframe_albedos,
-    const Projection keyframe_projection, int keyframe_width,
-    int keyframe_height, const float* frame_mask, const float* frame_depths,
-    const Vector3f* frame_normals, const float* frame_intensities,
-    const float* frame_gradient_x, const float* frame_gradient_y,
-    const Projection frame_projection, int frame_width, int frame_height,
-    const Light light, float* hessian, float* gradient)
+void ComputeSystemKernel(const Transform Tcm, const Transform Tcd,
+    const float* keyframe_depths, const Vector3f* keyframe_normals,
+    const float* keyframe_albedos, const Projection keyframe_projection,
+    int keyframe_width, int keyframe_height, const float* frame_mask,
+    const float* frame_depths, const Vector3f* frame_normals,
+    const float* frame_intensities, const float* frame_gradient_x,
+    const float* frame_gradient_y, const Projection frame_projection,
+    int frame_width, int frame_height, const Light light, float* hessian,
+    float* gradient)
 {
   VULCAN_SHARED float buffer1[256];
   VULCAN_SHARED float buffer2[256];
@@ -370,11 +376,12 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
 
   if (keyframe_x < keyframe_width && keyframe_y < keyframe_height)
   {
-    Evaluate<translation_enabled>(keyframe_x, keyframe_y, Tcm, keyframe_depths,
-        keyframe_normals, keyframe_albedos, keyframe_projection, keyframe_width,
-        keyframe_height, frame_mask, frame_depths, frame_normals,
-        frame_intensities, frame_gradient_x, frame_gradient_y, frame_projection,
-        frame_width, frame_height, light, &residual, &dfdx);
+    Evaluate<translation_enabled>(keyframe_x, keyframe_y, Tcm, Tcd,
+        keyframe_depths, keyframe_normals, keyframe_albedos,
+        keyframe_projection, keyframe_width, keyframe_height, frame_mask,
+        frame_depths, frame_normals, frame_intensities, frame_gradient_x,
+        frame_gradient_y, frame_projection, frame_width, frame_height, light,
+        &residual, &dfdx);
   }
 
   const int parameter_count = translation_enabled ? 6 : 3;
@@ -477,6 +484,50 @@ void ComputeSystemKernel(const Transform Tcm, const float* keyframe_depths,
   }
 }
 
+VULCAN_GLOBAL
+void RenderKernel(const Transform Tcm, const float* keyframe_depths,
+    const Vector3f* keyframe_normals, const Vector3f* keyframe_albedos,
+    const Projection keyframe_projection, int keyframe_width,
+    int keyframe_height, const Projection frame_projection, int frame_width,
+    int frame_height, const Light light, Vector3f* data)
+{
+  const int keyframe_x = blockIdx.x * blockDim.x + threadIdx.x;
+  const int keyframe_y = blockIdx.y * blockDim.y + threadIdx.y;
+
+  if (keyframe_x < keyframe_width && keyframe_y < keyframe_height)
+  {
+    const int keyframe_index = keyframe_y * keyframe_width + keyframe_x;
+    const float keyframe_depth = keyframe_depths[keyframe_index];
+
+    // check if keyframe has depth at pixel
+    if (keyframe_depth > 0)
+    {
+      // project keyframe point onto current frame
+      const float keyframe_u = keyframe_x + 0.5f;
+      const float keyframe_v = keyframe_y + 0.5f;
+      const Vector3f Xmp = keyframe_projection.Unproject(keyframe_u, keyframe_v, keyframe_depth);
+      const Vector3f Xcp = Vector3f(Tcm * Vector4f(Xmp, 1));
+      const Vector2f frame_uv = frame_projection.Project(Xcp);
+
+      // check if point falls within image bounds
+      if (frame_uv[0] >= 0.5f && frame_uv[0] < frame_width  - 0.5f &&
+          frame_uv[1] >= 0.5f && frame_uv[1] < frame_height - 0.5f)
+      {
+        const Vector3f albedo = keyframe_albedos[keyframe_index];
+        Vector3f keyframe_normal = keyframe_normals[keyframe_index];
+        keyframe_normal = Vector3f(Tcm * Vector4f(keyframe_normal, 0));
+        const float shading = light.GetShading(Xcp, keyframe_normal);
+        const Vector3f intensity = shading * albedo;
+
+        const int frame_x = frame_uv[0];
+        const int frame_y = frame_uv[1];
+        const int frame_index = frame_y * frame_width + frame_x;
+        data[frame_index] = intensity;
+      }
+    }
+  }
+}
+
 } // namespace
 
 void LightTracker::ComputeKeyframeIntensities()
@@ -529,9 +580,18 @@ void LightTracker::ComputeResiduals(const Frame& frame,
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+  const Projection& frame_projection = frame.color_projection;
+  const Projection& keyframe_projection = keyframe_->color_projection;
+
+  const Transform& keyframe_Twd = keyframe_->depth_to_world_transform;
+  const Transform& keyframe_Tcd = keyframe_->depth_to_color_transform;
+  const Transform keyframe_Tcw = keyframe_Tcd * keyframe_Twd.Inverse();
+
+  const Transform& frame_Twd = frame.depth_to_world_transform;
+  const Transform& frame_Tcd = frame.depth_to_color_transform;
+  const Transform frame_Tcw = frame_Tcd * frame_Twd.Inverse();
+
+  const Transform Tcm = frame_Tcw * keyframe_Tcw.Inverse();
 
   residuals.Resize(keyframe_->depth_image->GetTotal());
   float* d_residuals = residuals.GetData();
@@ -540,7 +600,7 @@ void LightTracker::ComputeResiduals(const Frame& frame,
   const dim3 total(keyframe_width, keyframe_height);
   const dim3 blocks = GetKernelBlocks(total, threads);
 
-  CUDA_LAUNCH(ComputeResidualsKernel, blocks, threads, 0, 0, Tcm,
+  CUDA_LAUNCH(ComputeResidualsKernel, blocks, threads, 0, 0, Tcm, frame_Tcd,
       keyframe_depths, keyframe_normals, keyframe_intensities,
       keyframe_projection, keyframe_width, keyframe_height, frame_mask,
       frame_depths, frame_normals, frame_intensities, frame_projection,
@@ -567,9 +627,18 @@ void LightTracker::ComputeJacobian(const Frame& frame,
   const float* frame_gradient_y = frame_gradient_y_.GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+  const Projection& frame_projection = frame.color_projection;
+  const Projection& keyframe_projection = keyframe_->color_projection;
+
+  const Transform& keyframe_Twd = keyframe_->depth_to_world_transform;
+  const Transform& keyframe_Tcd = keyframe_->depth_to_color_transform;
+  const Transform keyframe_Tcw = keyframe_Tcd * keyframe_Twd.Inverse();
+
+  const Transform& frame_Twd = frame.depth_to_world_transform;
+  const Transform& frame_Tcd = frame.depth_to_color_transform;
+  const Transform frame_Tcw = frame_Tcd * frame_Twd.Inverse();
+
+  const Transform Tcm = frame_Tcw * keyframe_Tcw.Inverse();
 
   jacobian.Resize(keyframe_->depth_image->GetTotal());
   Vector6f* d_jacobian = jacobian.GetData();
@@ -581,7 +650,7 @@ void LightTracker::ComputeJacobian(const Frame& frame,
   if (translation_enabled_)
   {
     CUDA_LAUNCH(ComputeJacobianKernel<true>, blocks, threads, 0, 0, Tcm,
-        keyframe_depths, keyframe_normals, keyframe_intensities,
+        frame_Tcd, keyframe_depths, keyframe_normals, keyframe_intensities,
         keyframe_projection, keyframe_width, keyframe_height, frame_mask,
         frame_depths, frame_normals, frame_intensities, frame_gradient_x,
         frame_gradient_y, frame_projection, frame_width, frame_height, light_,
@@ -590,7 +659,7 @@ void LightTracker::ComputeJacobian(const Frame& frame,
   else
   {
     CUDA_LAUNCH(ComputeJacobianKernel<false>, blocks, threads, 0, 0, Tcm,
-        keyframe_depths, keyframe_normals, keyframe_intensities,
+        frame_Tcd, keyframe_depths, keyframe_normals, keyframe_intensities,
         keyframe_projection, keyframe_width, keyframe_height, frame_mask,
         frame_depths, frame_normals, frame_intensities, frame_gradient_x,
         frame_gradient_y, frame_projection, frame_width, frame_height, light_,
@@ -601,6 +670,8 @@ void LightTracker::ComputeJacobian(const Frame& frame,
 void LightTracker::ComputeSystem(const Frame& frame)
 {
   // if (write_) WriteDataFiles(frame);
+  // WriteDataFiles(frame);
+  // WriteImage(frame); ++frame_;
 
   const int frame_width = frame.depth_image->GetWidth();
   const int frame_height = frame.depth_image->GetHeight();
@@ -615,9 +686,19 @@ void LightTracker::ComputeSystem(const Frame& frame)
   const float* frame_gradient_y = frame_gradient_y_.GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+  const Projection& frame_projection = frame.color_projection;
+  const Projection& keyframe_projection = keyframe_->color_projection;
+
+  const Transform& keyframe_Twd = keyframe_->depth_to_world_transform;
+  const Transform& keyframe_Tcd = keyframe_->depth_to_color_transform;
+  const Transform keyframe_Tcw = keyframe_Tcd * keyframe_Twd.Inverse();
+
+  const Transform& frame_Twd = frame.depth_to_world_transform;
+  const Transform& frame_Tcd = frame.depth_to_color_transform;
+  const Transform frame_Tcw = frame_Tcd * frame_Twd.Inverse();
+
+  const Transform Tcm = frame_Tcw * keyframe_Tcw.Inverse();
+
   float* hessian = hessian_.GetData();
   float* gradient = gradient_.GetData();
 
@@ -633,7 +714,7 @@ void LightTracker::ComputeSystem(const Frame& frame)
   if (translation_enabled_)
   {
     CUDA_LAUNCH(ComputeSystemKernel<true>, blocks, threads, 0, 0, Tcm,
-        keyframe_depths, keyframe_normals, keyframe_intensities,
+        frame_Tcd, keyframe_depths, keyframe_normals, keyframe_intensities,
         keyframe_projection, keyframe_width, keyframe_height, frame_mask,
         frame_depths, frame_normals, frame_intensities, frame_gradient_x,
         frame_gradient_y, frame_projection, frame_width, frame_height, light_,
@@ -642,12 +723,46 @@ void LightTracker::ComputeSystem(const Frame& frame)
   else
   {
     CUDA_LAUNCH(ComputeSystemKernel<false>, blocks, threads, 0, 0, Tcm,
-        keyframe_depths, keyframe_normals, keyframe_intensities,
+        frame_Tcd, keyframe_depths, keyframe_normals, keyframe_intensities,
         keyframe_projection, keyframe_width, keyframe_height, frame_mask,
         frame_depths, frame_normals, frame_intensities, frame_gradient_x,
         frame_gradient_y, frame_projection, frame_width, frame_height, light_,
         hessian, gradient);
   }
+}
+
+void LightTracker::TraceImage(const Frame& frame, ColorImage& data)
+{
+  const int frame_width = frame.color_image->GetWidth();
+  const int frame_height = frame.color_image->GetHeight();
+  const int keyframe_width = keyframe_->depth_image->GetWidth();
+  const int keyframe_height = keyframe_->depth_image->GetHeight();
+  const Vector3f* keyframe_intensities = keyframe_->color_image->GetData();
+  const float* keyframe_depths = keyframe_->depth_image->GetData();
+  const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
+  const Projection& frame_projection = frame.color_projection;
+  const Projection& keyframe_projection = keyframe_->color_projection;
+
+  const Transform& keyframe_Twd = keyframe_->depth_to_world_transform;
+  const Transform& keyframe_Tcd = keyframe_->depth_to_color_transform;
+  const Transform keyframe_Tcw = keyframe_Tcd * keyframe_Twd.Inverse();
+
+  const Transform& frame_Twd = frame.depth_to_world_transform;
+  const Transform& frame_Tcd = frame.depth_to_color_transform;
+  const Transform frame_Tcw = frame_Tcd * frame_Twd.Inverse();
+
+  const Transform Tcm = frame_Tcw * keyframe_Tcw.Inverse();
+
+  const dim3 threads(16, 16);
+  const dim3 total(keyframe_width, keyframe_height);
+  const dim3 blocks = GetKernelBlocks(total, threads);
+
+  data.Resize(frame_width, frame_height);
+
+  CUDA_LAUNCH(RenderKernel, blocks, threads, 0, 0, Tcm,
+      keyframe_depths, keyframe_normals, keyframe_intensities,
+      keyframe_projection, keyframe_width, keyframe_height, frame_projection,
+      frame_width, frame_height, light_, data.GetData());
 }
 
 } // namespace vulcan

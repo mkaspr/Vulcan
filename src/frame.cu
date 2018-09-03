@@ -121,6 +121,65 @@ void ComputeNormalsKernel(const float* depths, const Projection projection,
   }
 }
 
+template <int PATCH_SIZE>
+VULCAN_GLOBAL
+void FilterDepthsKernel(int image_width, int image_height, const float* src,
+    float* dst)
+{
+  const int pad = 3;
+  const int resolution = (PATCH_SIZE + 2 * pad);
+  const int shared_size = resolution * resolution;
+  VULCAN_SHARED float shared[shared_size];
+
+  const int x = blockIdx.x * blockDim.x + threadIdx.x;
+  const int y = blockIdx.y * blockDim.y + threadIdx.y;
+  int shared_index = threadIdx.y * blockDim.x + threadIdx.x;
+
+  while (shared_index < shared_size)
+  {
+    float depth = 0;
+    const int bx = blockIdx.x * blockDim.x - pad + (shared_index % resolution);
+    const int by = blockIdx.y * blockDim.y - pad + (shared_index / resolution);
+
+    if (bx >= 0 && bx < image_width && by >= 0 && by < image_height)
+    {
+      depth = src[by * image_width + bx];
+    }
+
+    shared[shared_index] = depth;
+    shared_index += blockDim.x * blockDim.y;
+  }
+
+  __syncthreads();
+
+  if (x < image_width && y < image_height)
+  {
+    const int tx = threadIdx.x + pad;
+    const int ty = threadIdx.y + pad;
+    const float d0 = shared[ty * resolution + tx];
+    float dn = 0;
+    float w = 0;
+
+    for (int i = -pad; i <= pad; ++i)
+    {
+      for (int j = -pad; j <= pad; ++j)
+      {
+        const float dk = shared[(ty + i) * resolution + (tx + j)];
+        const float delta = d0 - dk;
+
+        const float wr = expf(-Vector2f(i, j).SquaredNorm() / (pad * pad));
+        const float ws = expf(-(delta * delta) / 0.0004f);
+        const float ww = wr * ws;
+        dn += ww * dk;
+        w += ww;
+      }
+    }
+
+    const int output = y * image_width + x;
+    dst[output] = dn / w;
+  }
+}
+
 void ComputeNormals(const float* depths, const Projection& projection,
     Vector3f* normals, int image_width, int image_height)
 {
@@ -130,6 +189,17 @@ void ComputeNormals(const float* depths, const Projection& projection,
 
   CUDA_LAUNCH(ComputeNormalsKernel<16>, blocks, threads, 0, 0, depths,
       projection, normals, image_width, image_height);
+}
+
+void FilterDepths(int image_width, int image_height, const float* src,
+    float* dst)
+{
+  const dim3 threads(16, 16);
+  const dim3 total(image_width, image_height);
+  const dim3 blocks = GetKernelBlocks(total, threads);
+
+  CUDA_LAUNCH(FilterDepthsKernel<16>, blocks, threads, 0, 0, image_width,
+      image_height, src, dst);
 }
 
 } // namespace vulcan

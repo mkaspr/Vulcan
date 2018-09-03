@@ -43,6 +43,11 @@ class LightTracker : public Tracker
 
     void WriteDataFiles(const Frame& frame);
 
+    void WriteImage(const Frame& frame);
+
+    // void TraceImage(const Frame& frame, Image& data);
+    void TraceImage(const Frame& frame, ColorImage& data);
+
   protected:
 
     Light light_;

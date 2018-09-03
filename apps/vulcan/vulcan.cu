@@ -38,26 +38,26 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating integrator...";
 
-  DepthIntegrator integrator(volume);
-  integrator.SetDepthRange(depth_range);
-  integrator.SetMaxDistanceWeight(32);
+  // DepthIntegrator integrator(volume);
+  // integrator.SetDepthRange(depth_range);
+  // integrator.SetMaxDistanceWeight(32);
 
   // ColorIntegrator integrator(volume);
   // integrator.SetDepthRange(depth_range);
-  // integrator.SetMaxDistanceWeight(32);
-  // integrator.SetMaxColorWeight(16);
+  // integrator.SetMaxDistanceWeight(200);
+  // integrator.SetMaxColorWeight(200);
 
-  // Light light;
-  // // light.SetIntensity(2.0f);
-  // // light.SetPosition(0.1f, 0.0f, 0.0f);
-  // light.SetIntensity(4.0f);
-  // light.SetPosition(0.025f, 0.080f, 0.00f);
+  Light light;
+  // light.SetIntensity(2.0f);
+  // light.SetPosition(0.1f, 0.0f, 0.0f);
+  light.SetIntensity(2.0f);
+  light.SetPosition(0.025f, 0.080f, 0.00f);
 
-  // LightIntegrator integrator(volume);
-  // integrator.SetDepthRange(depth_range);
-  // integrator.SetMaxDistanceWeight(32);
-  // integrator.SetMaxColorWeight(4);
-  // integrator.SetLight(light);
+  LightIntegrator integrator(volume);
+  integrator.SetDepthRange(depth_range);
+  integrator.SetMaxDistanceWeight(100);
+  integrator.SetMaxColorWeight(16);
+  integrator.SetLight(light);
 
   LOG(INFO) << "Creating tracer...";
 
@@ -66,28 +66,65 @@ int main(int argc, char** argv)
 
   LOG(INFO) << "Creating tracker...";
 
-  PyramidTracker<DepthTracker> tracker;
+  // PyramidTracker<DepthTracker> tracker;
   // PyramidTracker<ColorTracker> tracker;
 
-  // std::shared_ptr<LightTracker> light_tracker;
-  // light_tracker = std::make_shared<LightTracker>();
-  // light_tracker->SetLight(light);
-  // PyramidTracker<LightTracker> tracker(light_tracker);
-  // // LightTracker& tracker = *light_tracker;
-  // // tracker.SetMaxIterations(1);
+  std::shared_ptr<LightTracker> light_tracker;
+  light_tracker = std::make_shared<LightTracker>();
+  light_tracker->SetLight(light);
+  PyramidTracker<LightTracker> tracker(light_tracker);
+  // LightTracker& tracker = *light_tracker;
+  // tracker.SetMaxIterations(1);
 
   LOG(INFO) << "Creating tracing frame...";
 
   int w = 640;
   int h = 480;
 
+  // // Vector3f tdc(0.02638751, 4.578596e-06, 0.0032462);
+  // // Vector3f tdc(-0.02, 0.0, 0.0);
+  // Vector3f tdc(0.0, 0.0, 0.0);
+
+  // Matrix3f Rdc;
+
+  // // Rdc(0, 0) =  0.999961900;
+  // // Rdc(1, 0) = -0.008240786;
+  // // Rdc(2, 0) = -0.002886043;
+
+  // // Rdc(0, 1) =  0.008251156;
+  // // Rdc(1, 1) =  0.999959500;
+  // // Rdc(2, 1) =  0.003599982;
+
+  // // Rdc(0, 2) =  0.002856259;
+  // // Rdc(1, 2) = -0.003623658;
+  // // Rdc(2, 2) =  0.999989400;
+
+  // Rdc = Matrix3f::Identity();
+
+  // const Transform Tdc = Transform::Translate(tdc) * Transform::Rotate(Rdc);
+  // const Transform Tcd = Tdc.Inverse();
+
+  const Transform Tcd;
+
   std::shared_ptr<Frame> trace_frame;
   trace_frame = std::make_shared<Frame>();
-  trace_frame->Twc = Transform::Translate(0, 0, 0);
-  trace_frame->projection.SetFocalLength(547, 547);
-  trace_frame->projection.SetCenterPoint(320, 240);
-  // trace_frame->projection.SetFocalLength(524.4784, 525.9332);
-  // trace_frame->projection.SetCenterPoint(320.0113, 243.5304);
+
+  // trace_frame->depth_projection.SetFocalLength(547, 547);
+  // trace_frame->depth_projection.SetCenterPoint(320, 240);
+  // trace_frame->color_projection.SetFocalLength(547, 547);
+  // trace_frame->color_projection.SetCenterPoint(320, 240);
+
+  trace_frame->depth_projection.SetFocalLength(544.1620, 544.3847);
+  trace_frame->depth_projection.SetCenterPoint(311.2701, 234.7798);
+  trace_frame->color_projection.SetFocalLength(544.1620, 544.3847);
+  trace_frame->color_projection.SetCenterPoint(311.2701, 234.7798);
+
+  // trace_frame->depth_projection.SetFocalLength(587.3380, 588.0155);
+  // trace_frame->depth_projection.SetCenterPoint(327.7136, 238.8891);
+  // trace_frame->color_projection.SetFocalLength(587.3380, 588.0155);
+  // trace_frame->color_projection.SetCenterPoint(327.7136, 238.8891);
+
+  trace_frame->depth_to_color_transform = Transform();
   trace_frame->depth_image = std::make_shared<Image>(w, h);
   trace_frame->color_image = std::make_shared<ColorImage>(w, h);
   trace_frame->normal_image = std::make_shared<ColorImage>(w, h);
@@ -122,18 +159,18 @@ int main(int argc, char** argv)
 
     {
       std::stringstream buffer;
-      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/depth_";
-      // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
-      // buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel1_";
-      // buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
+      // // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+      // // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
+      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/depth_";
+      // // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+      // // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      // depth_image->Load(buffer.str(), 1.0 / 1000.0);
+      buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel1_";
+      buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
+      depth_image->Load(buffer.str(), 1.0 / 10000.0);
       LOG(INFO) << "Loading depth image: " << buffer.str();
-      depth_image->Load(buffer.str(), 1.0 / 1000.0);
-      // depth_image->Load(buffer.str(), 1.0 / 10000.0);
       VULCAN_ASSERT(depth_image->GetHeight() == h);
       VULCAN_ASSERT(depth_image->GetWidth() == w);
     }
@@ -145,10 +182,10 @@ int main(int argc, char** argv)
       // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/color_";
       // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
       // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
-      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
-      // buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel0_";
-      // buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
+      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
+      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel0_";
+      buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
       LOG(INFO) << "Loading color image: " << buffer.str();
       color_image->Load(buffer.str(), 1.0 / 255.0);
       VULCAN_ASSERT(color_image->GetHeight() == h);
@@ -156,38 +193,62 @@ int main(int argc, char** argv)
     }
 
     Frame frame;
-    frame.Twc = Transform::Translate(0, 0, 0);
-    frame.projection.SetFocalLength(547, 547);
-    frame.projection.SetCenterPoint(320, 240);
-    // frame.projection.SetFocalLength(524.4784, 525.9332);
-    // frame.projection.SetCenterPoint(320.0113, 243.5304);
+
+    // // old IR (and unknown) calibration
+    // frame.depth_projection.SetFocalLength(587.3380, 588.0155);
+    // frame.depth_projection.SetCenterPoint(327.7136, 238.8891);
+
+    // // as per online specs
+    // frame.depth_projection.SetFocalLength(577.2953, 579.4113);
+    // frame.depth_projection.SetCenterPoint(320.0000, 240.0000);
+
+    // copy of color calibration
+    frame.depth_projection.SetFocalLength(544.1620, 544.3847);
+    frame.depth_projection.SetCenterPoint(311.2701, 234.7798);
+
+    frame.color_projection.SetFocalLength(544.1620, 544.3847);
+    frame.color_projection.SetCenterPoint(311.2701, 234.7798);
+
+    // frame.depth_projection.SetFocalLength(547, 547);
+    // frame.depth_projection.SetCenterPoint(320, 240);
+    // frame.color_projection.SetFocalLength(547, 547);
+    // frame.color_projection.SetCenterPoint(320, 240);
+    frame.depth_to_color_transform = Tcd;
     frame.color_image = color_image;
     frame.depth_image = depth_image;
+    frame.FilterDepths();
     frame.ComputeNormals();
 
     if (first_frame)
     {
       first_frame = false;
+
+      frame.normal_image->Save("given_normals.png", CV_8UC3, 127.5, 127.5);
     }
     else
     {
       LOG(INFO) << "Tracking frame " << i << "...";
-      frame.Twc = trace_frame->Twc;
+      frame.depth_to_world_transform = trace_frame->depth_to_world_transform;
       tracker.SetKeyframe(trace_frame);
       tracker.Track(frame);
 
-      LOG(INFO) << "Current pose:" << std::endl << frame.Twc.GetMatrix() << std::endl;
+      LOG(INFO) << "Current pose:" << std::endl << frame.depth_to_world_transform.GetMatrix() << std::endl;
     }
 
     LOG(INFO) << "Viewing frame " << i << "...";
+    volume->SetView(frame);
+    volume->SetView(frame);
     volume->SetView(frame);
 
     LOG(INFO) << "Integrating frame " << i << "...";
     integrator.Integrate(frame);
 
     LOG(INFO) << "Tracing frame " << i << "...";
-    trace_frame->Twc = frame.Twc;
+    trace_frame->depth_to_world_transform = frame.depth_to_world_transform;
     tracer.Trace(*trace_frame);
+
+    if (i == 5)
+      trace_frame->normal_image->Save("traced_normals.png", CV_8UC3, 127.5, 127.5);
 
     {
       LOG(INFO) << "Writing depth image...";

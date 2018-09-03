@@ -369,9 +369,19 @@ void ColorTracker::ComputeResiduals(const Frame& frame,
   const float* frame_gradient_y = frame_gradient_y_.GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+  const Projection& frame_projection = frame.color_projection;
+  const Projection& keyframe_projection = keyframe_->color_projection;
+
+  const Transform& keyframe_Twd = keyframe_->depth_to_world_transform;
+  const Transform& keyframe_Tcd = keyframe_->depth_to_color_transform;
+  const Transform keyframe_Tcw = keyframe_Tcd * keyframe_Twd.Inverse();
+
+  const Transform& frame_Twd = frame.depth_to_world_transform;
+  const Transform& frame_Tcd = frame.depth_to_color_transform;
+  const Transform frame_Tcw = frame_Tcd * frame_Twd.Inverse();
+
+  const Transform Tcm = frame_Tcw * keyframe_Tcw.Inverse();
+
   float* d_residuals = residuals.GetData();
 
   const dim3 threads(16, 16);
@@ -405,9 +415,19 @@ void ColorTracker::ComputeJacobian(const Frame& frame,
   const float* frame_gradient_y = frame_gradient_y_.GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+  const Projection& frame_projection = frame.color_projection;
+  const Projection& keyframe_projection = keyframe_->color_projection;
+
+  const Transform& keyframe_Twd = keyframe_->depth_to_world_transform;
+  const Transform& keyframe_Tcd = keyframe_->depth_to_color_transform;
+  const Transform keyframe_Tcw = keyframe_Tcd * keyframe_Twd.Inverse();
+
+  const Transform& frame_Twd = frame.depth_to_world_transform;
+  const Transform& frame_Tcd = frame.depth_to_color_transform;
+  const Transform frame_Tcw = frame_Tcd * frame_Twd.Inverse();
+
+  const Transform Tcm = frame_Tcw * keyframe_Tcw.Inverse();
+
   Vector6f* d_jacobian = jacobian.GetData();
 
   const dim3 threads(16, 16);
@@ -446,9 +466,19 @@ void ColorTracker::ComputeSystem(const Frame& frame)
   const float* frame_gradient_y = frame_gradient_y_.GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform Tcm = frame.Twc.Inverse() * keyframe_->Twc;
+  const Projection& frame_projection = frame.color_projection;
+  const Projection& keyframe_projection = keyframe_->color_projection;
+
+  const Transform& keyframe_Twd = keyframe_->depth_to_world_transform;
+  const Transform& keyframe_Tcd = keyframe_->depth_to_color_transform;
+  const Transform keyframe_Tcw = keyframe_Tcd * keyframe_Twd.Inverse();
+
+  const Transform& frame_Twd = frame.depth_to_world_transform;
+  const Transform& frame_Tcd = frame.depth_to_color_transform;
+  const Transform frame_Tcw = frame_Tcd * frame_Twd.Inverse();
+
+  const Transform Tcm = frame_Tcw * keyframe_Tcw.Inverse();
+
   float* hessian = hessian_.GetData();
   float* gradient = gradient_.GetData();
 

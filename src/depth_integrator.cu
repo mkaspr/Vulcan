@@ -19,7 +19,7 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     float voxel_length, float block_length, float truncation_length,
     float min_depth, float max_depth, const float* depths,
     int image_width, int image_height, float max_dist_weight,
-    const Projection projection, const Transform Tcw, Voxel* voxels)
+    const Projection projection, const Transform Tdw, Voxel* voxels)
 {
   // get voxel indices
   const int x = threadIdx.x;
@@ -38,10 +38,10 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
   const Vector3f Xwp = block_offset + voxel_offset;
 
   // convert point to camera frame
-  const Vector3f Xcp = Vector3f(Tcw * Vector4f(Xwp, 1));
+  const Vector3f Xdp = Vector3f(Tdw * Vector4f(Xwp, 1));
 
   // project point to image plane
-  const Vector2f uv = projection.Project(Xcp);
+  const Vector2f uv = projection.Project(Xdp);
 
   // check if point inside image
   if (uv[0] >= 0 && uv[0] < image_width && uv[1] >= 0 && uv[1] < image_height)
@@ -54,7 +54,7 @@ void IntegrateKernel(const int* indices, const HashEntry* hash_entries,
     if (depth < min_depth || depth > max_depth) return;
 
     // compute signed distance
-    const float distance = depth - Xcp[2];
+    const float distance = depth - Xdp[2];
 
     // check if within truncated segment
     if (distance > -truncation_length)
@@ -100,8 +100,8 @@ void DepthIntegrator::Integrate(const Frame& frame)
   const float* depths = frame.depth_image->GetData();
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
-  const Projection& projection = frame.projection;
-  const Transform Tcw = frame.Twc.Inverse();
+  const Transform Tdw = frame.depth_to_world_transform.Inverse();
+  const Projection& projection = frame.depth_projection;
   Voxel* voxels = voxel_buffer.GetData();
 
   const int resolution = Block::resolution;
@@ -111,7 +111,7 @@ void DepthIntegrator::Integrate(const Frame& frame)
   CUDA_LAUNCH(IntegrateKernel, blocks, threads, 0, 0, indices, entries,
       voxel_length, block_length, truncation_length, depth_range_[0],
       depth_range_[1], depths, image_width, image_height, max_distance_weight_,
-      projection, Tcw, voxels);
+      projection, Tdw, voxels);
 }
 
 } // namespace vulcan

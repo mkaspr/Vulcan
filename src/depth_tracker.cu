@@ -281,10 +281,10 @@ void DepthTracker::ComputeResiduals(const Frame& frame,
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform& Twm = keyframe_->Twc;
-  const Transform& Twc = frame.Twc;
+  const Projection& frame_projection = frame.depth_projection;
+  const Projection& keyframe_projection = keyframe_->depth_projection;
+  const Transform& Twm = keyframe_->depth_to_world_transform;
+  const Transform& Twc = frame.depth_to_world_transform;
   float* residuals_ptr = residuals.GetData();
 
   const dim3 threads(16, 16);
@@ -309,10 +309,10 @@ void DepthTracker::ComputeJacobian(const Frame& frame,
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform& Twm = keyframe_->Twc;
-  const Transform& Twc = frame.Twc;
+  const Projection& frame_projection = frame.depth_projection;
+  const Projection& keyframe_projection = keyframe_->depth_projection;
+  const Transform& Twm = keyframe_->depth_to_world_transform;
+  const Transform& Twc = frame.depth_to_world_transform;
   Vector6f* jacobian_ptr = jacobian.GetData();
 
   const dim3 threads(16, 16);
@@ -345,10 +345,10 @@ void DepthTracker::ComputeSystem(const Frame& frame)
   const float* keyframe_depths = keyframe_->depth_image->GetData();
   const Vector3f* keyframe_normals = keyframe_->normal_image->GetData();
   const Vector3f* frame_normals = frame.normal_image->GetData();
-  const Projection& frame_projection = frame.projection;
-  const Projection& keyframe_projection = keyframe_->projection;
-  const Transform& Twm = keyframe_->Twc;
-  const Transform& Twc = frame.Twc;
+  const Projection& frame_projection = frame.depth_projection;
+  const Projection& keyframe_projection = keyframe_->depth_projection;
+  const Transform& Twm = keyframe_->depth_to_world_transform;
+  const Transform& Twc = frame.depth_to_world_transform;
   float* hessian = hessian_.GetData();
   float* gradient = gradient_.GetData();
 

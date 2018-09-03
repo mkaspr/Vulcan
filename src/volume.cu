@@ -25,7 +25,7 @@ VULCAN_GLOBAL
 void UpdateBlockVisibilityKernel(const HashEntry* hash_entries,
     Visibility* block_visibility, int* visible_blocks, float block_length,
     int image_width, int image_height, const Projection projection,
-    const Transform Tcw, int count)
+    const Transform Tdw, int count)
 {
   bool visible = false;
   const int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -54,13 +54,13 @@ void UpdateBlockVisibilityKernel(const HashEntry* hash_entries,
         Xwp[2] = block_length * (origin[2] + ((i & 0b100) >> 2));
 
         // converte point to camera frame
-        const Vector4f Xcp = Tcw * Xwp;
+        const Vector4f Xdp = Tdw * Xwp;
 
         // check if behind camera
-        if (Xcp[2] < 0) continue;
+        if (Xdp[2] < 0) continue;
 
         // project point to image plane
-        const Vector2f uv = projection.Project(Vector3f(Xcp));
+        const Vector2f uv = projection.Project(Vector3f(Xdp));
 
         // check if point inside field of view
         if (uv[0] >= 0 && uv[0] <= image_width &&
@@ -87,7 +87,7 @@ VULCAN_GLOBAL
 void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
     Visibility* block_visibility, AllocationType* allocation_types,
     Block* allocation_blocks, const float* depths, int image_width,
-    int image_height, Projection projection, Transform Twc,
+    int image_height, Projection projection, Transform Twd,
     int block_count, float block_length, float truncation_length,
     float min_depth, float max_depth)
 {
@@ -105,10 +105,10 @@ void CreateAllocationRequestsKernel(const HashEntry* hash_entries,
     Vector3f direction = projection.Unproject(uv);
 
     // transform direction from camera frame to world frame
-    direction = Vector3f(Twc * Vector4f(direction, 0));
+    direction = Vector3f(Twd * Vector4f(direction, 0));
 
     // get ray origin from camera center in world frame
-    const Vector3f origin = Twc.GetTranslation();
+    const Vector3f origin = Twd.GetTranslation();
 
     // get depth value from depth image at pixel index
     const float depth = depths[y * image_width + x];
@@ -475,8 +475,8 @@ void Volume::UpdateBlockVisibility(const Frame& frame)
   const HashEntry* hash_entries = hash_entries_.GetData();
   Visibility* block_visibility = block_visibility_.GetData();
   int* visible_blocks = visible_blocks_.GetData();
-  const Projection& projection = frame.projection;
-  const Transform Tcw = frame.Twc.Inverse();
+  const Projection& projection = frame.depth_projection;
+  const Transform Tdw = frame.depth_to_world_transform.Inverse();
   const int image_width = frame.depth_image->GetWidth();
   const int image_height = frame.depth_image->GetHeight();
   const float block_length = Block::resolution * voxel_length_;
@@ -489,7 +489,7 @@ void Volume::UpdateBlockVisibility(const Frame& frame)
 
   CUDA_LAUNCH(UpdateBlockVisibilityKernel<512>, blocks, threads, 0, 0,
       hash_entries, block_visibility, visible_blocks, block_length,
-      image_width, image_height, projection, Tcw, max_block_count_);
+      image_width, image_height, projection, Tdw, max_block_count_);
 
   visible_blocks_.Resize(GetBufferSize());
 }
@@ -503,8 +503,8 @@ void Volume::CreateAllocationRequests(const Frame& frame)
   const float* depth = frame.depth_image->GetData();
   const int width = frame.depth_image->GetWidth();
   const int height = frame.depth_image->GetHeight();
-  const Projection& projection = frame.projection;
-  const Transform& Twc = frame.Twc;
+  const Projection& projection = frame.depth_projection;
+  const Transform& Twd = frame.depth_to_world_transform;
   const float block_length = Block::resolution * voxel_length_;
 
   const dim3 threads(16, 16);
@@ -513,7 +513,7 @@ void Volume::CreateAllocationRequests(const Frame& frame)
 
   CUDA_LAUNCH(CreateAllocationRequestsKernel, blocks, threads, 0, 0,
     hash_entries, block_visibility, allocation_types,allocation_blocks,
-    depth, width, height, projection, Twc, main_block_count_,
+    depth, width, height, projection, Twd, main_block_count_,
     block_length, truncation_length_, depth_range_[0], depth_range_[1]);
 }
 

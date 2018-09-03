@@ -23,6 +23,10 @@ class LightIntegrator : public Integrator
 
     void ComputeFrameMask(const Frame& frame);
 
+    void IntegrateDepth(const Frame& frame);
+
+    void IntegrateColor(const Frame& frame);
+
   protected:
 
     Light light_;
