@@ -2,11 +2,13 @@
 #include <sstream>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <HAL/Camera/CameraDevice.h>
 #include <thrust/device_ptr.h>
 #include <thrust/host_vector.h>
 #include <thrust/fill.h>
 #include <vulcan/vulcan.h>
 
+DEFINE_string(cam, "", "HAL camera uri");
 DEFINE_int32(main_blocks, 65024, "main block count");
 DEFINE_int32(excess_blocks, 8192, "excess block count");
 DEFINE_double(voxel_length, 0.008, "voxel edge length");
@@ -21,10 +23,42 @@ DEFINE_string(output, "output.ply", "output mesh file");
 
 using namespace vulcan;
 
+struct Response
+{
+  inline float operator()(float value) const
+  {
+    float pow = value;
+    float result = float(0);
+
+    for (int i = 0; i < coeffs.size(); ++i)
+    {
+      result += pow * coeffs[i];
+      pow *= value;
+    }
+
+    return result;
+  }
+
+  Eigen::VectorXf coeffs;
+};
+
 int main(int argc, char** argv)
 {
   google::InitGoogleLogging(argv[0]);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  VULCAN_ASSERT_MSG(!FLAGS_cam.empty(), "missing camera uri");
+
+  LOG(INFO) << "Creating camera...";
+
+  std::shared_ptr<hal::Camera> camera;
+  camera = std::make_shared<hal::Camera>(FLAGS_cam);
+
+  Response response;
+  response.coeffs = Eigen::Vector3f(0.504067,  0.0248056,  0.471128);
+
+  cv::Mat vignetting = cv::imread("/home/mike/Code/photocalib/build/apps/vignetting/xtion_vignetting_smooth.png", CV_LOAD_IMAGE_ANYDEPTH);
+  vignetting.convertTo(vignetting, CV_32FC1, 1.0 / 65535.0);
 
   LOG(INFO) << "Creating volume...";
 
@@ -72,9 +106,9 @@ int main(int argc, char** argv)
   std::shared_ptr<LightTracker> light_tracker;
   light_tracker = std::make_shared<LightTracker>();
   light_tracker->SetLight(light);
-  PyramidTracker<LightTracker> tracker(light_tracker);
-  // LightTracker& tracker = *light_tracker;
-  // tracker.SetMaxIterations(1);
+  // PyramidTracker<LightTracker> tracker(light_tracker);
+  LightTracker& tracker = *light_tracker;
+  tracker.SetMaxIterations(1);
 
   LOG(INFO) << "Creating tracing frame...";
 
@@ -136,6 +170,14 @@ int main(int argc, char** argv)
   const clock_t start = clock();
   bool first_frame = true;
 
+
+  std::vector<cv::Mat> temp_images;
+
+  for (int i = 0; i < frame_start; ++i)
+  {
+    camera->Capture(temp_images);
+  }
+
   for (int i = frame_start; i <= frame_stop; ++i)
   {
     // if (i == 287)
@@ -148,7 +190,6 @@ int main(int argc, char** argv)
     //   light_tracker->write_ = false;
     // }
 
-
     const int fid = i;
 
     std::shared_ptr<Image> depth_image;
@@ -157,40 +198,76 @@ int main(int argc, char** argv)
     std::shared_ptr<ColorImage> color_image;
     color_image = std::make_shared<ColorImage>();
 
+    std::vector<cv::Mat> images;
+    camera->Capture(images);
+
     {
+      cv::cvtColor(images[0], images[0], CV_BGR2RGB);
+      images[0].convertTo(images[0], CV_32FC3, 1.0 / 255.0);
+
+      for (int y = 0; y < images[0].rows; ++y)
+      {
+        for (int x = 0; x < images[0].cols; ++x)
+        {
+          const float scale = 0.75f / vignetting.at<float>(y, x);
+          Eigen::Vector3f& pixel = images[0].at<Eigen::Vector3f>(y, x);
+          pixel[0] = scale * response(pixel[0]);
+          pixel[1] = scale * response(pixel[1]);
+          pixel[2] = scale * response(pixel[2]);
+        }
+      }
+
+      color_image->Load(images[0], 1.0);
+      VULCAN_ASSERT(color_image->GetHeight() == h);
+      VULCAN_ASSERT(color_image->GetWidth() == w);
+
       std::stringstream buffer;
-      // // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
-      // // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
-      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/depth_";
-      // // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
-      // // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
-      // depth_image->Load(buffer.str(), 1.0 / 1000.0);
-      buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel1_";
-      buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
-      depth_image->Load(buffer.str(), 1.0 / 10000.0);
-      LOG(INFO) << "Loading depth image: " << buffer.str();
+      buffer << "input_color_";
+      buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+      images[0].convertTo(images[0], CV_8UC3, 255.0);
+      cv::imwrite(buffer.str(), images[0]);
+    }
+
+    {
+      depth_image->Load(images[1], 1.0 / 10000.0);
       VULCAN_ASSERT(depth_image->GetHeight() == h);
       VULCAN_ASSERT(depth_image->GetWidth() == w);
     }
 
-    {
-      std::stringstream buffer;
-      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
-      // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/color_";
-      // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/color_";
-      // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
-      // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
-      // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
-      buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel0_";
-      buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
-      LOG(INFO) << "Loading color image: " << buffer.str();
-      color_image->Load(buffer.str(), 1.0 / 255.0);
-      VULCAN_ASSERT(color_image->GetHeight() == h);
-      VULCAN_ASSERT(color_image->GetWidth() == w);
-    }
+    // {
+    //   std::stringstream buffer;
+    //   // // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/depth_";
+    //   // // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/depth_";
+    //   // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/depth_";
+    //   // // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/depth_";
+    //   // // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+    //   // buffer << "/home/mike/Datasets/Work/cornell_shark/images/depth_";
+    //   // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+    //   // depth_image->Load(buffer.str(), 1.0 / 1000.0);
+    //   buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel1_";
+    //   buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
+    //   depth_image->Load(buffer.str(), 1.0 / 10000.0);
+    //   LOG(INFO) << "Loading depth image: " << buffer.str();
+    //   VULCAN_ASSERT(depth_image->GetHeight() == h);
+    //   VULCAN_ASSERT(depth_image->GetWidth() == w);
+    // }
+
+    // {
+    //   std::stringstream buffer;
+    //   // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/color_";
+    //   // // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/static/color_";
+    //   // buffer << "/home/mike/Code/spelunk/build/apps/spelunk/dynamic/left/color_";
+    //   // // buffer << "/home/mike/Code/spelunk/build/apps/postprocess/color_";
+    //   // buffer << std::setw(4) << std::setfill('0') << fid << "_left.png";
+    //   // buffer << "/home/mike/Datasets/Work/cornell_shark/images/color_";
+    //   // buffer << std::setw(4) << std::setfill('0') << fid << ".png";
+    //   buffer << "/home/mike/Code/arpg/arpg_apps/build/applications/logtool/light_car_18/channel0_";
+    //   buffer << std::setw(5) << std::setfill('0') << fid << ".pgm";
+    //   LOG(INFO) << "Loading color image: " << buffer.str();
+    //   color_image->Load(buffer.str(), 1.0 / 255.0);
+    //   VULCAN_ASSERT(color_image->GetHeight() == h);
+    //   VULCAN_ASSERT(color_image->GetWidth() == w);
+    // }
 
     Frame frame;
 
@@ -216,7 +293,7 @@ int main(int argc, char** argv)
     frame.depth_to_color_transform = Tcd;
     frame.color_image = color_image;
     frame.depth_image = depth_image;
-    frame.FilterDepths();
+    // frame.FilterDepths();
     frame.ComputeNormals();
 
     if (first_frame)

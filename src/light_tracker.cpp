@@ -117,7 +117,7 @@ void LightTracker::WriteDataFiles(const Frame& frame)
 {
   ComputeResiduals(frame, residuals_);
   ComputeJacobian(frame, jacobian_);
-  WriteImage(frame);
+  // WriteImage(frame);
 
   {
     std::vector<float> residuals(residuals_.GetSize());

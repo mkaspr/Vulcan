@@ -110,6 +110,19 @@ class Image
     }
 
     VULCAN_HOST
+    void Load(const cv::Mat& image, float scale = 1)
+    {
+      cv::Mat temp = image.clone();
+      VULCAN_ASSERT_MSG(temp.data != nullptr, "unable to load image");
+      if (temp.channels() == 3) cv::cvtColor(temp, temp, CV_RGB2GRAY);
+      temp.convertTo(temp, CV_32FC1, scale);
+      Resize(temp.cols, temp.rows);
+      const size_t bytes = sizeof(float) * temp.total();
+      const cudaMemcpyKind kind = cudaMemcpyHostToDevice;
+      CUDA_DEBUG(cudaMemcpy(data_, temp.data, bytes, kind));
+    }
+
+    VULCAN_HOST
     void GetGradients(Image& gx, Image& gy) const;
 
     VULCAN_HOST
@@ -226,6 +239,20 @@ class ColorImage
       const size_t bytes = sizeof(Vector3f) * image.total();
       const cudaMemcpyKind kind = cudaMemcpyHostToDevice;
       CUDA_DEBUG(cudaMemcpy(data_, image.data, bytes, kind));
+    }
+
+    VULCAN_HOST
+    void Load(const cv::Mat& image, float scale = 1)
+    {
+      cv::Mat temp = image.clone();
+      VULCAN_ASSERT_MSG(temp.data != nullptr, "unable to load image");
+      if (temp.channels() == 1) cv::cvtColor(temp, temp, CV_GRAY2RGB);
+      temp.convertTo(temp, CV_32FC3, scale);
+      cv::cvtColor(temp, temp, CV_BGR2RGB);
+      Resize(temp.cols, temp.rows);
+      const size_t bytes = sizeof(Vector3f) * temp.total();
+      const cudaMemcpyKind kind = cudaMemcpyHostToDevice;
+      CUDA_DEBUG(cudaMemcpy(data_, temp.data, bytes, kind));
     }
 
     VULCAN_HOST

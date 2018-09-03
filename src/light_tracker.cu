@@ -671,7 +671,7 @@ void LightTracker::ComputeSystem(const Frame& frame)
 {
   // if (write_) WriteDataFiles(frame);
   // WriteDataFiles(frame);
-  // WriteImage(frame); ++frame_;
+  WriteImage(frame); ++frame_;
 
   const int frame_width = frame.depth_image->GetWidth();
   const int frame_height = frame.depth_image->GetHeight();
